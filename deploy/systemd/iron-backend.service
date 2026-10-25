@@ -1,0 +1,26 @@
+[Unit]
+Description=Iron Node.js API (bare-metal alternative to Docker Compose)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=iron
+Group=iron
+WorkingDirectory=/opt/iron/backend
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/iron/backend.env
+ExecStart=/usr/bin/node /opt/iron/backend/src/server.js
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/iron
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

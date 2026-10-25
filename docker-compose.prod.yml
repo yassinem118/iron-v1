@@ -1,0 +1,109 @@
+name: iron-prod
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    command: ["mongod", "--auth", "--bind_ip_all"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${IRON_DB_NAME:-iron_v1}
+      IRON_DB_NAME: ${IRON_DB_NAME:-iron_v1}
+      IRON_DB_USER: ${IRON_DB_USER:?Set IRON_DB_USER}
+      IRON_DB_PASSWORD: ${IRON_DB_PASSWORD:?Set IRON_DB_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+      - ./deploy/mongo-init/01-create-app-user.sh:/docker-entrypoint-initdb.d/01-create-app-user.sh:ro
+    networks: [private]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval 'db.adminCommand({ping:1}).ok' | grep 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt: ["no-new-privileges:true"]
+    # Deliberately no host port: MongoDB is only reachable on the private Docker network.
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      MONGODB_URI: mongodb://${IRON_DB_USER}:${IRON_DB_PASSWORD}@mongo:27017/${IRON_DB_NAME:-iron_v1}?authSource=${IRON_DB_NAME:-iron_v1}
+      CORS_ORIGIN: https://${DOMAIN}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    expose: ["8080"]
+    networks: [private, edge]
+    read_only: true
+    tmpfs: ["/tmp:size=16m,noexec,nosuid"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    env_file: .env.production
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN}
+      ALLOWED_USER_IDS: ${ALLOWED_USER_IDS:?Set ALLOWED_USER_IDS}
+    networks: [private]
+    read_only: true
+    tmpfs: ["/tmp:size=8m,noexec,nosuid"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+      args:
+        VITE_API_URL: .
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot:ro
+    networks: [edge]
+    security_opt: ["no-new-privileges:true"]
+
+  certbot:
+    image: certbot/certbot:latest
+    profiles: ["ops"]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    # Run explicitly for issuance/renewal; do not keep a privileged daemon running.
+
+networks:
+  edge:
+  private:
+    internal: true
+
+volumes:
+  mongo_data:
+  letsencrypt:
+  certbot_webroot:

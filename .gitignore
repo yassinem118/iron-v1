@@ -1,0 +1,17 @@
+# Secrets and production environment
+.env
+.env.*
+!.env.example
+!.env.production.example
+**/key.properties
+**/*.jks
+**/*.keystore
+**/secrets/
+# Dependencies/build outputs
+**/node_modules/
+**/dist/
+**/build/
+**/.dart_tool/
+**/coverage/
+# Local logs
+*.log

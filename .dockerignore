@@ -1,0 +1,12 @@
+**/node_modules
+**/.dart_tool
+**/build
+**/dist
+**/.git
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.production.example
+**/*.jks
+**/key.properties
+**/secrets

@@ -1,0 +1,22 @@
+[Unit]
+Description=Iron Telegram read-only observer bot (bare-metal alternative)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=iron
+Group=iron
+WorkingDirectory=/opt/iron/bot
+EnvironmentFile=/etc/iron/bot.env
+ExecStart=/opt/iron/bin/ironbot
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
