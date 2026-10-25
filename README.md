@@ -40,25 +40,19 @@ Run from `bot/` with a strong random secret:
 export IRON_INGEST_ADDR=127.0.0.1:8787
 export IRON_INGEST_TOKEN="$(openssl rand -hex 32)"
 go run ./cmd/ironstream
-```
 
-POST sanitized, authorized JSON frames to `/ingest` with `Authorization: Bearer $IRON_INGEST_TOKEN`. The handler caps bodies at 64 KiB, validates supported frames, and never logs the raw payload or source URL. Keep it on loopback; use an authenticated TLS reverse proxy for remote access.
+POST sanitized, authorized JSON frames to /ingest with Authorization: Bearer $IRON_INGEST_TOKEN. The handler caps bodies at 64 KiB, validates supported frames, and never logs the raw payload or source URL. Keep it on loopback; use an authenticated TLS reverse proxy for remote access.
 
-### WebSocket observer
-
-```sh
+WebSocket observer
+Bash
 export IRON_STREAM_MODE=websocket
 export IRON_WS_URL='wss://your-authorized-test-endpoint.example/ws'
 # Optional additive PEM root CA bundle:
 export IRON_ROOT_CA_FILE=/path/to/test-root-ca.pem
 go run ./cmd/ironstream
-```
-
 The client retains normal TLS certificate and hostname verification, supports an additive CA bundle, caps frame size, sends Ping frames, handles Pong deadlines, and retries with exponential backoff. It logs only recognized frame metadata, never raw payloads or credentials. It does not generate actions or infer undocumented schemas.
 
-Run `go mod tidy`, `go test ./...`, and `go run ./cmd/ironbot` in a network-enabled Go environment. First build requires downloading Go modules. A production-specific adapter requires authorized sample frames and a documented schema.
+Run go mod tidy, go test ./..., and go run ./cmd/ironbot in a network-enabled Go environment. First build requires downloading Go modules. A production-specific adapter requires authorized sample frames and a documented schema.
 
-
-## Production deployment
-
-See [`DEPLOYMENT_PRODUCTION.md`](DEPLOYMENT_PRODUCTION.md) for the additive Docker Compose, Nginx/Let's Encrypt, MongoDB authorization, systemd alternative, and Android release-signing configuration. Copy `.env.production.example` to `.env.production`; never commit real secrets.
+Production deployment
+See DEPLOYMENT_PRODUCTION.md for the additive Docker Compose, Nginx/Let's Encrypt, MongoDB authorization, systemd alternative, and Android release-signing configuration. Copy .env.production.example to .env.production; never commit real secrets.

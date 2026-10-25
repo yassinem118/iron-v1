@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"iron-v1-bot/internal/grid"
 	"iron-v1-bot/internal/protocol"
 )

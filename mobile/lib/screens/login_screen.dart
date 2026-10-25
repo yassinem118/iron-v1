@@ -17,9 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _hide = true;
   String? _error;
 
-  // Supply the official Melbet URL verified for your deployment/jurisdiction:
-  // flutter build apk --dart-define=MELBET_URL=https://your-verified-official-domain/
-  static const _melbetUrl = String.fromEnvironment(
+   static const _melbetUrl = String.fromEnvironment(
     'MELBET_URL',
     defaultValue: 'https://melbet.com/',
   );
@@ -43,9 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Use the official HTTPS URL. Android App Links / iOS Universal Links may
-    // route it into the installed official app; otherwise the OS opens the web page.
-    try {
+     try {
       final uri = Uri.parse(_melbetUrl);
       if (uri.scheme != 'https' || uri.host.isEmpty) {
         throw const FormatException('MELBET_URL must be an HTTPS URL');
@@ -68,98 +64,162 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     const accent = Color(0xFFFFD400); // اللون الأصفر المميز لـ Melbet
-    const background = Color(0xFF0B0D12);
+    
     return Scaffold(
-      backgroundColor: background,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _form,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Icon(Icons.shield_rounded, size: 58, color: accent),
-                    const SizedBox(height: 18),
-                    // تم تغيير الكلمة إلى MELBET باللون الأصفر الأنيق
-                    const Text('MELBET', textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: 3, color: accent)),
-                    const SizedBox(height: 8),
-                    const Text('Sign in to continue', textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white60)),
-                    const SizedBox(height: 36),
-                    const Text('ID', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _id,
-                      autocorrect: false,
-                      textInputAction: TextInputAction.next,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        hintText: 'User / License ID',
-                        prefixIcon: Icon(Icons.person_outline),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (v) => v == null || v.trim().length < 3
-                          ? 'Enter a valid ID' : null,
-                    ),
-                    const SizedBox(height: 18),
-                    const Text('PASSWORD', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _password,
-                      obscureText: _hide,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Your password',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          onPressed: () => setState(() => _hide = !_hide),
-                          icon: Icon(_hide ? Icons.visibility : Icons.visibility_off),
+      body: Stack(
+        children: [
+          // 1. خلفية الصورة الفخمة ديال Melbet تملأ الشاشة
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/melbet_bg.png', // تأكد أنك حطيتي الصورة فهاد المسار
+              fit: BoxFit.cover,
+            ),
+          ),
+          // 2. طبقة عتمة (Dark Overlay) باش يبانو خانات الكتابة والكلام بوضوح تام فوق الخلفية
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.65),
+            ),
+          ),
+          // 3. المحتوى وخانات الإدخال
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Form(
+                    key: _form,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Icon(Icons.shield_rounded, size: 58, color: accent),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'MELBET',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 3,
+                            color: accent,
+                          ),
                         ),
-                      ),
-                      validator: (v) => v == null || v.isEmpty ? 'Enter your password' : null,
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 14),
-                      Text(_error!, style: const TextStyle(color: Colors.redAccent),
-                        textAlign: TextAlign.center),
-                    ],
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      height: 54,
-                      child: FilledButton(
-                        onPressed: _busy ? null : _submit,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: accent,
-                          foregroundColor: Colors.black,
-                          disabledBackgroundColor: accent.withOpacity(0.55),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Sign in to continue',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white70),
                         ),
-                        child: _busy
-                            ? const SizedBox(width: 22, height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                            : const Text('connect', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                      ),
+                        const SizedBox(height: 36),
+                        const Text(
+                          'ID',
+                          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _id,
+                          autocorrect: false,
+                          textInputAction: TextInputAction.next,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'User / License ID',
+                            hintStyle: const TextStyle(color: Colors.white38),
+                            prefixIcon: const Icon(Icons.person_outline, color: accent),
+                            filled: true,
+                            fillColor: Colors.black54,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.white24),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: accent, width: 2),
+                            ),
+                          ),
+                          validator: (v) => v == null || v.trim().length < 3
+                              ? 'Enter a valid ID' : null,
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'PASSWORD',
+                          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _password,
+                          obscureText: _hide,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submit(),
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Your password',
+                            hintStyle: const TextStyle(color: Colors.white38),
+                            prefixIcon: const Icon(Icons.lock_outline, color: accent),
+                            filled: true,
+                            fillColor: Colors.black54,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.white24),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: accent, width: 2),
+                            ),
+                            suffixIcon: IconButton(
+                              onPressed: () => setState(() => _hide = !_hide),
+                              icon: Icon(_hide ? Icons.visibility : Icons.visibility_off, color: Colors.white70),
+                            ),
+                          ),
+                          validator: (v) => v == null || v.isEmpty ? 'Enter your password' : null,
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 14),
+                          Text(
+                            _error!,
+                            style: const TextStyle(color: Colors.redAccent),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                        const SizedBox(height: 28),
+                        SizedBox(
+                          height: 54,
+                          child: FilledButton(
+                            onPressed: _busy ? null : _submit,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: accent,
+                              foregroundColor: Colors.black,
+                              disabledBackgroundColor: accent.withOpacity(0.55),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: _busy
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                  )
+                                : const Text(
+                                    'CONNECT',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Use your Melbet account credentials only. Never enter third-party passwords here.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11, color: Colors.white38),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Use your Melbet account credentials only. Never enter third-party passwords here.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 11, color: Colors.white38),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
