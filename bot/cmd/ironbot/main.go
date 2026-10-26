@@ -7,9 +7,11 @@ import (
 	"strings"
 	"sync"
 	"time"
-
+	
 	"iron-v1-bot/internal/grid"
 	"iron-v1-bot/internal/protocol"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 const maxConcurrentHandlers = 48
@@ -114,14 +116,21 @@ func renderSnapshot(store *grid.Store) string {
 	var b strings.Builder
 	b.WriteString("Latest observed grid (read-only)\n")
 	if snapshot.Event != "" {
-		b.WriteString("Event: " + safeText(snapshot.Event) + "\n")
+		b.WriteString("Event: ")
+		b.WriteString(safeText(snapshot.Event))
+		b.WriteByte('\n')
 	}
 	if snapshot.GameID != "" {
-		b.WriteString("Game: " + safeText(snapshot.GameID) + "\n")
+		b.WriteString("Game: ")
+		b.WriteString(safeText(snapshot.GameID))
+		b.WriteByte('\n')
 	}
-	b.WriteString("Observed: " + snapshot.SeenAt.UTC().Format(time.RFC3339) + "\n")
+	b.WriteString("Observed: ")
+	b.WriteString(snapshot.SeenAt.UTC().Format(time.RFC3339))
+	b.WriteByte('\n')
 	for _, row := range snapshot.Rows {
-		b.WriteString(renderRow(row) + "\n")
+		b.WriteString(renderRow(row))
+		b.WriteByte('\n')
 	}
 	b.WriteString("Only source-reported statuses are shown; blank/unrevealed cells are unknown, not safe picks.")
 	return strings.TrimSpace(b.String())
@@ -129,7 +138,9 @@ func renderSnapshot(store *grid.Store) string {
 
 func renderRow(row grid.Row) string {
 	var b strings.Builder
-	b.WriteString("Row " + strconv.Itoa(row.Number) + ": ")
+	b.WriteString("Row ")
+	b.WriteString(strconv.Itoa(row.Number))
+	b.WriteString(": ")
 	byCol := make(map[int]string, len(row.Cells))
 	for _, cell := range row.Cells {
 		byCol[cell.Column] = cell.Status
@@ -142,7 +153,9 @@ func renderRow(row grid.Row) string {
 		if !ok {
 			status = "unknown"
 		}
-		b.WriteString(strconv.Itoa(col) + "=" + safeText(status))
+		b.WriteString(strconv.Itoa(col))
+		b.WriteByte('=')
+		b.WriteString(safeText(status))
 	}
 	return b.String()
 }
