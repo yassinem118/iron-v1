@@ -1,8 +1,8 @@
 authRouter.post('/connect', async (req, res, next) => {
   try {
     const parsed = z.object({
-      accountId: z.string().trim().min(1).max(128), // كيقبل دابا أي ID أو إيميل فيه @ بشكل عادي
-      password: z.string().min(1).max(128),      // كيقبل أي كلمة مرور عادية بلا شروط معقدة
+      accountId: z.string().trim().min(1).max(128),
+      password: z.string().min(1).max(128),
     }).safeParse(req.body);
 
     if (!parsed.success) {
@@ -84,4 +84,9 @@ authRouter.post('/connect', async (req, res, next) => {
     console.error('POST /api/connect failed:', error);
     return next(error);
   }
- });
+});
+
+// ----------------------------------------------------
+// التعديل المطلوب: تصدير authRouter بشكل صريح (Named Export)
+// ----------------------------------------------------
+export { authRouter };
