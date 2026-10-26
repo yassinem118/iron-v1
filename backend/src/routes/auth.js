@@ -86,7 +86,4 @@ authRouter.post('/connect', async (req, res, next) => {
   }
 });
 
-// ----------------------------------------------------
-// التعديل المطلوب: تصدير authRouter بشكل صريح (Named Export)
-// ----------------------------------------------------
-export { authRouter };
+ export { authRouter };
