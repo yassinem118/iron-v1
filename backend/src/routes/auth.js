@@ -1,3 +1,9 @@
+import express from 'express';
+
+// 1. تعريف الـ Router بالاسم الصحيح authRouter
+const authRouter = express.Router();
+
+// 2. الـ Route ديالك
 authRouter.post('/connect', async (req, res, next) => {
   try {
     const parsed = z.object({
@@ -86,4 +92,5 @@ authRouter.post('/connect', async (req, res, next) => {
   }
 });
 
- export { authRouter };
+// 3. التصدير النظيف بنفس الاسم
+export { authRouter };
