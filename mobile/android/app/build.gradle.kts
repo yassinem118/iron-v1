@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.example.iron_v1"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "26.3.11579264" // 
+    ndkVersion = "28.2.13676358" // تم تحديث إصدار الـ NDK هنا
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API = import.meta.env.VITE_API_URL || 'http://78.154.103.8:16673';
 
 async function request(path, adminKey, options = {}) {
   const r = await fetch(`${API}${path}`, {
