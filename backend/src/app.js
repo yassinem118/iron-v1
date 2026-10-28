@@ -17,6 +17,8 @@ app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(express.json({ limit: '16kb' }));
 app.use(cookieParser());
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: 'draft-7', legacyHeaders: false }), authRouter);
+// Keep the requested POST /api/connect path available while preserving /api/auth/* routes.
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: 'draft-7', legacyHeaders: false }), authRouter);
 app.use('/api/license', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: 'draft-7', legacyHeaders: false }), licenseRouter);
 app.use('/api/brainai', rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }), brainaiRouter);
 app.use('/api/admin/licenses', rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }), adminLicensesRouter);
