@@ -12,7 +12,7 @@ These files add deployment infrastructure without changing existing business log
 ## 1. Create production environment
 
 ```sh
-cp .env.production.example .env.production
+# Existing .env.production is preserved in this archive; use .env.production.example only as a sanitized template.
 chmod 600 .env.production
 openssl rand -hex 32  # generate a unique value for each secret
 ```

@@ -23,7 +23,6 @@ services:
       retries: 10
       start_period: 20s
     security_opt: ["no-new-privileges:true"]
-    # Deliberately no host port: MongoDB is only reachable on the private Docker network.
 
   backend:
     build:
@@ -61,20 +60,29 @@ services:
     init: true
     env_file: .env.production
     environment:
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN}
-      ALLOWED_USER_IDS: ${ALLOWED_USER_IDS:?Set ALLOWED_USER_IDS}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      ALLOWED_USER_IDS: ${ALLOWED_USER_IDS:-}
     networks: [private]
     read_only: true
     tmpfs: ["/tmp:size=8m,noexec,nosuid"]
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
 
+  admin-build:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /
+    profiles: ["build-only"]
+    restart: "no"
+
   nginx:
     build:
       context: .
       dockerfile: nginx/Dockerfile
       args:
-        VITE_API_URL: .
+        VITE_API_URL: /
     restart: unless-stopped
     depends_on:
       backend:
