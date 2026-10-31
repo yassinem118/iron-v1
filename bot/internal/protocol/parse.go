@@ -13,8 +13,6 @@ import (
 	"io"
 	"strings"
 	"time"
-
-	"iron-v1-bot/internal/grid"
 )
 
 const MaxPayloadBytes = 64 * 1024
@@ -57,18 +55,18 @@ type rawRow struct {
 // ParseFrame recognizes common JSON event wrappers and returns a snapshot only
 // when at least one row and one explicit cell value are present. It does not
 // treat missing cells as safe or derive a next pick.
-func ParseFrame(input []byte) (grid.Snapshot, error) {
+func ParseFrame(input []byte) (Snapshot, error) {
 	if len(input) == 0 || len(input) > MaxPayloadBytes {
-		return grid.Snapshot{}, fmt.Errorf("payload must be between 1 and %d bytes", MaxPayloadBytes)
+		return Snapshot{}, fmt.Errorf("payload must be between 1 and %d bytes", MaxPayloadBytes)
 	}
 	var root map[string]json.RawMessage
 	dec := json.NewDecoder(bytes.NewReader(input))
 	dec.UseNumber()
 	if err := dec.Decode(&root); err != nil {
-		return grid.Snapshot{}, fmt.Errorf("invalid JSON frame: %w", err)
+		return Snapshot{}, fmt.Errorf("invalid JSON frame: %w", err)
 	}
 	if err := ensureEOF(dec); err != nil {
-		return grid.Snapshot{}, err
+		return Snapshot{}, err
 	}
 
 	var env Envelope
@@ -94,22 +92,22 @@ func ParseFrame(input []byte) (grid.Snapshot, error) {
 
 	rowsRaw := firstRaw(base["rows"], base["grid"], root["rows"], root["grid"])
 	if len(rowsRaw) == 0 {
-		return grid.Snapshot{}, errors.New("no explicit rows/grid array found; upload a representative JSON frame to add a precise adapter")
+		return Snapshot{}, errors.New("no explicit rows/grid array found; upload a representative JSON frame to add a precise adapter")
 	}
 	rows, err := parseRows(rowsRaw)
 	if err != nil {
-		return grid.Snapshot{}, err
+		return Snapshot{}, err
 	}
 	name := firstText(env.Event, env.Type, env.Action)
-	return grid.Snapshot{Event: name, GameID: env.GameID, Rows: rows, SeenAt: time.Now().UTC()}, nil
+	return Snapshot{Event: name, GameID: env.GameID, Rows: rows, SeenAt: time.Now().UTC()}, nil
 }
 
-func parseRows(raw json.RawMessage) ([]grid.Row, error) {
+func parseRows(raw json.RawMessage) ([]Row, error) {
 	var array []json.RawMessage
 	if err := json.Unmarshal(raw, &array); err != nil {
 		return nil, errors.New("rows/grid must be a JSON array")
 	}
-	rows := make([]grid.Row, 0, len(array))
+	rows := make([]Row, 0, len(array))
 	for i, item := range array {
 		var obj rawRow
 		if err := json.Unmarshal(item, &obj); err != nil {
@@ -134,7 +132,7 @@ func parseRows(raw json.RawMessage) ([]grid.Row, error) {
 			return nil, fmt.Errorf("row %d: %w", number, err)
 		}
 		if len(cells) > 0 {
-			rows = append(rows, grid.Row{Number: number, Cells: cells})
+			rows = append(rows, Row{Number: number, Cells: cells})
 		}
 	}
 	if len(rows) == 0 {
@@ -143,12 +141,12 @@ func parseRows(raw json.RawMessage) ([]grid.Row, error) {
 	return rows, nil
 }
 
-func parseCells(raw json.RawMessage) ([]grid.Cell, error) {
+func parseCells(raw json.RawMessage) ([]Cell, error) {
 	var cells []json.RawMessage
 	if err := json.Unmarshal(raw, &cells); err != nil {
 		return nil, errors.New("cells must be a JSON array")
 	}
-	out := make([]grid.Cell, 0, len(cells))
+	out := make([]Cell, 0, len(cells))
 	for i, item := range cells {
 		var c rawCell
 		if err := json.Unmarshal(item, &c); err != nil {
@@ -167,7 +165,7 @@ func parseCells(raw json.RawMessage) ([]grid.Cell, error) {
 		if c.Revealed != nil && !*c.Revealed {
 			continue
 		}
-		out = append(out, grid.Cell{Column: col, Status: status})
+		out = append(out, Cell{Column: col, Status: status})
 	}
 	return out, nil
 }

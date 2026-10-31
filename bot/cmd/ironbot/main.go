@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
-	"iron-v1-bot/internal/grid"
+
 	"iron-v1-bot/internal/protocol"
+	"iron-v1-bot/internal/state"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -69,7 +69,7 @@ func main() {
 	wg.Wait()
 }
 
-func handle(input string, store *grid.Store) string {
+func handle(input string, store *state.Store) string {
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return ""
@@ -108,7 +108,7 @@ func handle(input string, store *grid.Store) string {
 	return renderRow(row)
 }
 
-func renderSnapshot(store *grid.Store) string {
+func renderSnapshot(store *state.Store) string {
 	snapshot, ok := store.Latest()
 	if !ok {
 		return "No observed game frame yet. Use /parse with an authorized JSON frame/log; this bot does not connect to the betting service or generate predictions."
@@ -136,7 +136,7 @@ func renderSnapshot(store *grid.Store) string {
 	return strings.TrimSpace(b.String())
 }
 
-func renderRow(row grid.Row) string {
+func renderRow(row protocol.Row) string {
 	var b strings.Builder
 	b.WriteString("Row ")
 	b.WriteString(strconv.Itoa(row.Number))
@@ -145,7 +145,7 @@ func renderRow(row grid.Row) string {
 	for _, cell := range row.Cells {
 		byCol[cell.Column] = cell.Status
 	}
-	for col := 1; col <= grid.Columns; col++ {
+	for col := 1; col <= state.Columns; col++ {
 		if col > 1 {
 			b.WriteString(" | ")
 		}
@@ -184,19 +184,19 @@ func parseAllowlist(raw string) map[int64]bool {
 // another account's latest game snapshot.
 type userStores struct {
 	mu     sync.Mutex
-	byUser map[int64]*grid.Store
+	byUser map[int64]*state.Store
 }
 
 func newUserStores() *userStores {
-	return &userStores{byUser: make(map[int64]*grid.Store)}
+	return &userStores{byUser: make(map[int64]*state.Store)}
 }
 
-func (s *userStores) For(userID int64) *grid.Store {
+func (s *userStores) For(userID int64) *state.Store {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	store := s.byUser[userID]
 	if store == nil {
-		store = grid.NewStore()
+		store = state.NewStore()
 		s.byUser[userID] = store
 	}
 	return store

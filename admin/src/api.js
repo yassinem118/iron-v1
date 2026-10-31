@@ -1,32 +1,19 @@
-const API = import.meta.env.VITE_API_URL || 'http://78.154.103.8:16673';
-
-async function request(path, adminKey, options = {}) {
-  const r = await fetch(`${API}${path}`, {
-    ...options,
-    headers: {
-      'x-admin-key': adminKey,
-      ...(options.body ? { 'content-type': 'application/json' } : {}),
-      ...options.headers,
-    },
-  });
-  if (!r.ok) {
-    let message = `API error ${r.status}`;
-    try { message = (await r.json()).error || message; } catch {}
-    throw new Error(message);
-  }
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+async function request(path, key, options = {}) {
+  const r = await fetch(`${API}${path}`, { ...options, headers: {
+    ...(key ? { 'x-admin-key': key } : {}),
+    ...(options.body ? { 'content-type': 'application/json' } : {}),
+    ...options.headers,
+  }});
+  if (!r.ok) { let m = `API request failed (${r.status})`; try { const b = await r.json(); m = b.error || b.message || m; } catch {} throw new Error(m); }
   if (r.status === 204) return null;
   return r.json();
 }
-
-export function listUsers(adminKey) {
-  return request('/api/admin/users?limit=100', adminKey);
-}
-export function createUser(adminKey, data) {
-  return request('/api/admin/users', adminKey, { method: 'POST', body: JSON.stringify(data) });
-}
-export function updateUser(adminKey, id, data) {
-  return request(`/api/admin/users/${encodeURIComponent(id)}`, adminKey, { method: 'PATCH', body: JSON.stringify(data) });
-}
-export function setActive(adminKey, id, active) {
-  return request(`/api/admin/users/${encodeURIComponent(id)}/status`, adminKey, { method: 'PATCH', body: JSON.stringify({ active }) });
-}
+export const listUsers = k => request('/api/admin/users?limit=100', k);
+export const createUser = (k, d) => request('/api/admin/users', k, { method:'POST', body:JSON.stringify(d) });
+export const updateUser = (k, id, d) => request(`/api/admin/users/${encodeURIComponent(id)}`, k, { method:'PATCH', body:JSON.stringify(d) });
+export const setActive = (k, id, active) => request(`/api/admin/users/${encodeURIComponent(id)}/status`, k, { method:'PATCH', body:JSON.stringify({active}) });
+export const listLicenses = k => request('/api/admin/licenses', k);
+export const issueActivationCode = (k, id, days) => request(`/api/admin/licenses/users/${encodeURIComponent(id)}/code`, k, { method:'POST', body:JSON.stringify({days:Number(days)}) });
+export const listActivationRequests = k => request('/api/admin/licenses/requests', k);
+export const reviewActivationRequest = (k, id, action, days) => request(`/api/admin/licenses/requests/${encodeURIComponent(id)}/${action}`, k, { method:'POST', body:JSON.stringify({days:Number(days)}) });

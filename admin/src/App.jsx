@@ -1,76 +1,44 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Shield, RefreshCw, LogIn, Power, UserPlus, Pencil, X } from 'lucide-react';
-import { listUsers, setActive, createUser, updateUser } from './api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Activity, BadgeCheck, Ban, Check, Clock3, Copy, KeyRound, LogIn, Pencil, RefreshCw, Search, ShieldCheck, UserRoundPlus, X, Zap } from 'lucide-react';
+import { createUser, issueActivationCode, listActivationRequests, listLicenses, listUsers, reviewActivationRequest, setActive, updateUser } from './api';
 
 const blank = { accountId: '', password: '' };
+const date = v => v ? new Date(v).toLocaleString() : '—';
+const statusName = s => ({trial:'Trial',pending:'Needs activation',active:'Licensed',expired:'Expired',revoked:'Revoked'}[s] || 'Not initialized');
 
 export default function App() {
-  const [key, setKey] = useState('');
-  const [users, setUsers] = useState([]);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState(blank);
-  const [editing, setEditing] = useState(null);
-
-  const load = useCallback(async () => {
-    if (!key) return;
-    setBusy(true); setError('');
-    try { const data = await listUsers(key); setUsers(data.users); }
-    catch (e) { setError(e.message || 'Could not load accounts. Check the admin key and API server.'); }
-    finally { setBusy(false); }
-  }, [key]);
-
-  useEffect(() => { if (key) load(); }, [key, load]);
-
-  function startCreate() { setEditing(null); setForm(blank); setError(''); setNotice(''); }
-  function startEdit(u) { setEditing(u); setForm({ accountId: u.accountId, password: '' }); setError(''); setNotice(''); }
-  function cancelForm() { setEditing(null); setForm(blank); }
-
-  async function save(e) {
-    e.preventDefault(); setError(''); setNotice('');
-    if (!key) return setError('Connect with the admin API key first.');
-    if (!editing && form.password.length < 12) return setError('Password must be at least 12 characters.');
-    if (form.password && form.password.length < 12) return setError('A new password must be at least 12 characters.');
-    setBusy(true);
-    try {
-      if (editing) {
-        const payload = { accountId: form.accountId.trim() };
-        if (form.password) payload.password = form.password;
-        await updateUser(key, editing._id, payload);
-        setNotice(form.password ? 'Account updated and password reset.' : 'Account ID updated.');
-      } else {
-        await createUser(key, { accountId: form.accountId.trim(), password: form.password });
-        setNotice('Account created.');
-      }
-      cancelForm();
-      await load();
-    } catch (e) { setError(e.message || 'Could not save account.'); }
-    finally { setBusy(false); }
-  }
-
-  async function toggle(u) {
-    try { await setActive(key, u._id, !u.active); await load(); }
-    catch (e) { setError(e.message || 'Status update failed.'); }
-  }
-
+  const [key,setKey]=useState(''), [users,setUsers]=useState([]), [licenses,setLicenses]=useState([]), [requests,setRequests]=useState([]);
+  const [error,setError]=useState(''), [notice,setNotice]=useState(''), [busy,setBusy]=useState(false), [form,setForm]=useState(blank), [editing,setEditing]=useState(null);
+  const [search,setSearch]=useState(''), [days,setDays]=useState('15'), [requestDays,setRequestDays]=useState('15'), [issued,setIssued]=useState(null);
+  const load=useCallback(async()=>{if(!key.trim())return;setBusy(true);setError('');try{
+    const [u,l,r]=await Promise.all([listUsers(key.trim()),listLicenses(key.trim()),listActivationRequests(key.trim())]);
+    setUsers(Array.isArray(u.users)?u.users:[]);setLicenses(Array.isArray(l.licenses)?l.licenses:[]);setRequests(Array.isArray(r.requests)?r.requests:[]);
+  }catch(e){setError(e.message||'Could not load data. Check the API URL and admin key.');}finally{setBusy(false);}},[key]);
+  useEffect(()=>{if(key.trim())load();},[key,load]);
+  const licenseMap=useMemo(()=>{const m=new Map();licenses.forEach(l=>{const id=l.user?._id||l.user?.id||l.user;if(id)m.set(String(id),l)});return m;},[licenses]);
+  const rows=useMemo(()=>users.map(u=>({...u,license:licenseMap.get(String(u._id))||null})).filter(u=>`${u.accountId} ${u.license?.status||''}`.toLowerCase().includes(search.toLowerCase())),[users,licenseMap,search]);
+  const stats={total:users.length,active:licenses.filter(l=>l.status==='active'&&(!l.expiresAt||new Date(l.expiresAt)>new Date())).length,trial:licenses.filter(l=>l.status==='trial').length,pending:licenses.filter(l=>['pending','expired'].includes(l.status)).length};
+  function reset(){setEditing(null);setForm(blank);}
+  async function save(e){e.preventDefault();setError('');setNotice('');setIssued(null);if(!key.trim())return setError('Enter the admin API key first.');if(!editing&&form.password.length<12)return setError('Password must be at least 12 characters.');if(form.password&&form.password.length<12)return setError('A new password must be at least 12 characters.');
+    setBusy(true);try{if(editing){const d={accountId:form.accountId.trim()};if(form.password)d.password=form.password;await updateUser(key.trim(),editing._id,d);setNotice(form.password?'Customer updated; password reset.':'Customer ID updated.');}
+      else{await createUser(key.trim(),{accountId:form.accountId.trim(),password:form.password});setNotice('Customer created. Trial state is initialized when the app first checks license status.');}
+      reset();await load();}catch(e){setError(e.message||'Could not save customer.');}finally{setBusy(false);}}
+  async function toggle(u){setError('');try{await setActive(key.trim(),u._id,!u.active);setNotice(`Account ${u.active?'disabled':'enabled'}.`);await load();}catch(e){setError(e.message||'Status update failed.');}}
+  async function issue(u){setError('');setNotice('');setIssued(null);setBusy(true);try{const result=await issueActivationCode(key.trim(),u._id,days);setIssued(result);setNotice(`Activation code generated for ${u.accountId}. Copy it now; it is shown only once.`);await load();}catch(e){setError(e.message||'Could not issue code.');}finally{setBusy(false);}}
+  async function review(r,action){setError('');setBusy(true);try{await reviewActivationRequest(key.trim(),r._id,action,requestDays);setNotice(action==='approve'?'Request approved.':'Request rejected.');await load();}catch(e){setError(e.message||'Could not review request.');}finally{setBusy(false);}}
+  async function copyCode(){try{await navigator.clipboard.writeText(issued.code);setNotice('Activation code copied. Store it securely; it cannot be viewed again.');}catch{setError('Clipboard blocked. Select and copy the code manually.');}}
   return <main className="shell">
-    <header className="top"><div className="brand"><div className="mark"><Shield size={23}/></div><div><b>IRON v1</b><small>CONTROL CENTER</small></div></div><span className="live"><i/> API ADMIN</span></header>
-    <section className="intro"><p className="eyebrow">SYSTEM OVERVIEW / 01</p><h1>Master Dashboard</h1><p className="sub">Manage Iron v1 accounts and service status.</p></section>
-    <section className="panel access"><label htmlFor="adminKey">Admin API key</label><div className="accessRow"><input id="adminKey" type="password" value={key} onChange={e=>setKey(e.target.value)} placeholder="Enter your admin key" autoComplete="current-password"/><button onClick={load} disabled={busy || !key}><LogIn size={16}/> Connect</button></div><p className="hint">Use a secret supplied through your deployment environment. Never commit it to source control.</p></section>
-    <section className="stats"><div className="panel stat"><span>REGISTERED ACCOUNTS</span><strong>{users.length}</strong></div><div className="panel stat"><span>ACTIVE IN LIST</span><strong>{users.filter(u=>u.active).length}</strong></div><button className="refresh" onClick={load} disabled={busy || !key}><RefreshCw size={16} className={busy?'spin':''}/> Refresh</button></section>
-    <section className="panel editor">
-      <div className="editorHead"><div><h2>{editing ? 'Edit account' : 'Create account'}</h2><p>Set an account ID and password. Existing passwords cannot be viewed; leave the password blank when editing to keep it unchanged.</p></div>{editing && <button className="action" type="button" onClick={cancelForm}><X size={14}/> Cancel</button>}</div>
-      <form onSubmit={save} className="accountForm">
-        <label>USER / LICENSE ID<input required minLength={3} maxLength={64} pattern="[a-zA-Z0-9_.-]+" value={form.accountId} onChange={e=>setForm({...form,accountId:e.target.value})} placeholder="client_001" autoComplete="off"/></label>
-        <label>{editing ? 'NEW PASSWORD (OPTIONAL)' : 'PASSWORD'}<input type="password" minLength={12} maxLength={128} required={!editing} value={form.password} onChange={e=>setForm({...form,password:e.target.value})} placeholder={editing?'Leave blank to keep current password':'At least 12 characters'} autoComplete="new-password"/></label>
-        <button type="submit" disabled={busy || !key}><UserPlus size={16}/>{editing?'Save changes':'Create account'}</button>
-      </form>
-    </section>
-    <section className="panel tablePanel"><div className="tableHead"><div><h2>Account registry</h2><p>Passwords are hashed and never displayed. Use Edit to reset a password.</p></div><span className="count">{users.length} RECORDS</span></div>
-      {error && <div className="error" role="alert">{error}</div>}
-      {notice && <div className="notice" role="status">{notice}</div>}
-      <div className="tableWrap"><table><thead><tr><th>#</th><th>IRON ACCOUNT ID</th><th>CREATED</th><th>STATUS</th><th>ACTIONS</th></tr></thead><tbody>{users.map((u,i)=><tr key={u._id}><td>{String(i+1).padStart(2,'0')}</td><td className="account">{u.accountId}</td><td>{new Date(u.createdAt).toLocaleString()}</td><td><span className={`status ${u.active?'on':'off'}`}>{u.active?'ACTIVE':'DISABLED'}</span></td><td className="actions"><button className="action" onClick={()=>startEdit(u)}><Pencil size={14}/> Edit</button><button className="action" onClick={()=>toggle(u)}><Power size={14}/>{u.active?'Disable':'Enable'}</button></td></tr>)}{!users.length && <tr><td colSpan="5" className="empty">{key?'No accounts found.':'Connect with your admin key to load accounts.'}</td></tr>}</tbody></table></div>
-    </section><footer>IRON v1 <span>SECURE ACCOUNT MANAGEMENT</span></footer>
+    <header className="topbar"><div className="brand"><div className="brandMark"><ShieldCheck size={23}/></div><div><b>IRON <span>CONTROL</span></b><small>LICENSE & CUSTOMER OPERATIONS</small></div></div><div className="topRight"><span className="secure"><i/> ADMIN API</span><button className="iconButton" onClick={load} disabled={busy||!key.trim()} aria-label="Refresh"><RefreshCw size={17} className={busy?'spin':''}/></button></div></header>
+    <section className="hero"><div><p className="eyebrow"><Activity size={13}/> OPERATIONS CENTER / 01</p><h1>Customer dashboard</h1><p className="sub">Manage Iron accounts, trial usage, activation codes and license requests.</p></div><div className="heroBadge"><Activity size={17}/><span><b>{busy?'Syncing data':'Ready to manage'}</b><small>{users.length} customer records loaded</small></span></div></section>
+    <section className="panel access"><div className="accessTitle"><div className="miniIcon"><KeyRound size={17}/></div><div><h2>Secure API connection</h2><p>Admin key is sent using the <code>x-admin-key</code> header.</p></div></div><div className="accessRow"><input type="password" value={key} onChange={e=>setKey(e.target.value)} placeholder="Paste your admin API key" autoComplete="current-password"/><button className="primaryButton" onClick={load} disabled={busy||!key.trim()}><LogIn size={16}/> Connect API</button></div><p className="hint">Set <code>VITE_API_URL</code> to your backend URL. Use HTTPS in production; never commit an admin key to source control.</p></section>
+    {error&&<div className="alert error" role="alert"><Ban size={17}/><span>{error}</span><button onClick={()=>setError('')} aria-label="Dismiss"><X size={15}/></button></div>}
+    {notice&&<div className="alert success" role="status"><Check size={17}/><span>{notice}</span><button onClick={()=>setNotice('')} aria-label="Dismiss"><X size={15}/></button></div>}
+    {issued&&<section className="panel issued"><div className="issuedIcon"><KeyRound size={22}/></div><div className="issuedText"><p className="eyebrow">NEW ACTIVATION CODE</p><h2>{issued.accountId}</h2><p>Shown once only. Send the code securely to this customer.</p><code className="codeValue">{issued.code}</code><small>Duration: {issued.durationDays} days · {statusName(issued.status)}</small></div><button className="primaryButton" onClick={copyCode}><Copy size={16}/> Copy code</button><button className="closeIssued" onClick={()=>setIssued(null)} aria-label="Close"><X size={16}/></button></section>}
+    <section className="stats"><Stat icon={<UserRoundPlus size={18}/>} label="CUSTOMERS" value={stats.total} detail="Registered Iron accounts"/><Stat icon={<BadgeCheck size={18}/>} label="ACTIVE LICENSES" value={stats.active} detail="Currently licensed"/><Stat icon={<Zap size={18}/>} label="TRIALS" value={stats.trial} detail="Trial records found"/><Stat icon={<Clock3 size={18}/>} label="ACTION REQUIRED" value={stats.pending} detail="Pending or expired"/></section>
+    <section className="panel editor"><div className="sectionHead"><div><p className="eyebrow">CUSTOMER ACCESS</p><h2>{editing?'Edit customer':'Create customer'}</h2><p>Passwords are hashed by the backend and can never be viewed here.</p></div>{editing&&<button className="secondaryButton" onClick={reset}><X size={15}/> Cancel</button>}</div><form onSubmit={save} className="accountForm"><label>IRON USER / LICENSE ID<input required minLength={3} maxLength={64} pattern="[a-zA-Z0-9_.-]+" value={form.accountId} onChange={e=>setForm({...form,accountId:e.target.value})} placeholder="customer_001" autoComplete="off"/></label><label>{editing?'RESET PASSWORD (OPTIONAL)':'INITIAL PASSWORD'}<input type="password" minLength={12} maxLength={128} required={!editing} value={form.password} onChange={e=>setForm({...form,password:e.target.value})} placeholder={editing?'Leave blank to keep current password':'Minimum 12 characters'} autoComplete="new-password"/></label><button className="yellowButton" type="submit" disabled={busy||!key.trim()}>{editing?<Pencil size={16}/>:<UserRoundPlus size={16}/>} {editing?'Save customer':'Create customer'}</button></form></section>
+    <section className="panel tablePanel"><div className="sectionHead tableSectionHead"><div><p className="eyebrow">CUSTOMER DIRECTORY</p><h2>Accounts & licenses</h2><p>Trial attempts are tracked server-side, not in the browser.</p></div><div className="searchBox"><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search customers or status"/></div></div><div className="tableWrap"><table><thead><tr><th>CUSTOMER</th><th>TRIALS LEFT</th><th>LICENSE</th><th>EXPIRES</th><th>ACCOUNT</th><th>ACTIONS</th></tr></thead><tbody>{rows.map(u=>{const l=u.license;return <tr key={u._id}><td><div className="customerCell"><span className="avatar">{u.accountId.slice(0,1).toUpperCase()}</span><span><b>{u.accountId}</b><small>Joined {date(u.createdAt)}</small></span></div></td><td><span className={`trialPill ${(l?.trialRemaining??0)===0?'depleted':''}`}>{l?`${l.trialRemaining??0} / 2`:'Not started'}</span></td><td><span className={`status ${l?.status||'unknown'}`}><i/>{statusName(l?.status)}</span></td><td>{date(l?.expiresAt)}</td><td><span className={`accountStatus ${u.active?'enabled':'disabled'}`}>{u.active?'Enabled':'Disabled'}</span></td><td><div className="actions"><button className="smallButton" onClick={()=>issue(u)} disabled={busy||!u.active}><KeyRound size={14}/> Issue code</button><button className="smallButton" onClick={()=>{setEditing(u);setForm({accountId:u.accountId,password:''});setError('');setIssued(null)}}><Pencil size={14}/> Edit</button><button className="smallButton subtle" onClick={()=>toggle(u)} disabled={busy}><Ban size={14}/>{u.active?'Disable':'Enable'}</button></div></td></tr>})}{!rows.length&&<tr><td colSpan="6" className="empty">{key?(busy?'Loading customers…':'No matching customers found.'):'Connect to the API to load customers.'}</td></tr>}</tbody></table></div><div className="tableFoot"><span>Showing {rows.length} of {users.length} customers</span><button className="textButton" onClick={load} disabled={busy||!key.trim()}><RefreshCw size={14}/> Refresh list</button></div></section>
+    <section className="panel requestsPanel"><div className="sectionHead"><div><p className="eyebrow">RENEWAL WORKFLOW</p><h2>Activation requests</h2><p>Verify payment or eligibility separately before approving.</p></div><div className="durationControl"><label htmlFor="requestDays">License duration</label><select id="requestDays" value={requestDays} onChange={e=>setRequestDays(e.target.value)}><option value="1">1 day</option><option value="7">7 days</option><option value="15">15 days</option></select></div></div>{!requests.length?<div className="empty requestEmpty"><Clock3 size={22}/> No pending activation requests.</div>:<div className="requestList">{requests.map(r=><div className="requestRow" key={r._id}><div className="requestAvatar">ID</div><div className="requestInfo"><b>{r.accountId||'Customer request'}</b><small>Requested {date(r.requestedAt)}</small></div><span className="pendingTag">Pending review</span><div className="requestActions"><button className="approveButton" onClick={()=>review(r,'approve')} disabled={busy}><Check size={14}/> Approve</button><button className="rejectButton" onClick={()=>review(r,'reject')} disabled={busy}><X size={14}/> Reject</button></div></div>)}</div>}</section>
+    <footer><span><b>IRON CONTROL</b> · SECURE CUSTOMER MANAGEMENT</span><span>Passwords are never displayed · Activation codes are single-use</span></footer>
   </main>;
 }
+function Stat({icon,label,value,detail}){return <article className="panel stat"><div className="statIcon">{icon}</div><div className="statLabel">{label}</div><strong>{value}</strong><small>{detail}</small></article>}

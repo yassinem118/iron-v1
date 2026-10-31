@@ -1,17 +1,29 @@
-# iron_v1
+# IRON Mobile — Dashboard update
 
-A new Flutter project.
+This update preserves the existing Flutter project and adds a live rounds dashboard after a successful IRON login.
 
-## Getting Started
+## Configuration
 
-This project is a starting point for a Flutter application.
+Configure endpoints at build time; do not ship an unencrypted HTTP backend in production.
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+flutter build apk --release \
+  --dart-define=IRON_API_URL=https://YOUR_API_HOST \
+  --dart-define=IRON_ROUNDS_PATH=/api/rounds \
+  --dart-define=MELBET_URL=https://melbet.com/
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+The dashboard polls `GET /api/rounds` every five seconds. The response may be either a JSON list or an object with `rounds`, `results`, or `data` containing a list. Each record should contain `round` (or `roundNumber`), `row` (or `level`), `cell` (or `column`), and optionally `createdAt` (ISO-8601), `id`, and `status`. Example record for integration testing only:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```json
+{ "round": 1, "row": 1, "cell": 3, "createdAt": "2026-10-31T14:00:00Z", "status": "confirmed" }
+```
+
+The example is schema documentation, not a real game result. The backend must authenticate access and return only confirmed, authorized records. If the backend route or response shape differs, adjust `IRON_ROUNDS_PATH` or the parser in `lib/screens/rounds_dashboard.dart`.
+
+## Notes
+
+- On successful IRON login, the dashboard opens and attempts to launch the configured Melbet destination. Returning to IRON refreshes the round list.
+- The dashboard displays server-returned records; it does not predict hidden cells.
+- The previous login API URL is retained for compatibility with the current project. Verify it and move it to a build-time configuration before production.
+- Use HTTPS and ensure the backend does not expose records across different customers.

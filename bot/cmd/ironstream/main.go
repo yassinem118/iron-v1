@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"iron-v1-bot/internal/grid"
 	"iron-v1-bot/internal/protocol"
+	"iron-v1-bot/internal/state"
 	"iron-v1-bot/internal/stream"
 )
 
@@ -49,7 +49,7 @@ func main() {
 	if token == "" {
 		logger.Fatal("IRON_INGEST_TOKEN is required for ingest mode")
 	}
-	store := grid.NewStore()
+	store := state.NewStore()
 	srv := &stream.IngestServer{Token: token, Logger: logger, OnFrame: func(raw []byte) error {
 		snap, err := protocol.ParseFrame(raw)
 		if err != nil {

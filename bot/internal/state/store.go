@@ -1,47 +1,30 @@
-// Package grid models only observed game state. It deliberately does not infer
+// Package state stores only explicitly observed source state. It deliberately does not infer
 // unrevealed outcomes or manufacture a "safe" choice from random/hidden data.
-package grid
+package state
 
 import (
 	"errors"
 	"fmt"
 	"sort"
+
+	"iron-v1-bot/internal/protocol"
 	"sync"
 	"time"
 )
 
 const Columns = 5
 
-// Cell represents an explicitly observed cell in a five-column row.
-// Status is source-provided text such as "apple", "bomb", or "unknown".
-type Cell struct {
-	Column int    `json:"column"`
-	Status string `json:"status"`
-}
-
-type Row struct {
-	Number int    `json:"row"`
-	Cells  []Cell `json:"cells"`
-}
-
-type Snapshot struct {
-	Event  string    `json:"event,omitempty"`
-	GameID string    `json:"gameId,omitempty"`
-	Rows   []Row     `json:"rows"`
-	SeenAt time.Time `json:"seenAt"`
-}
-
 // Store is safe for concurrent Telegram handlers. It stores the latest
 // observed snapshot, not a predicted future board.
 type Store struct {
 	mu       sync.RWMutex
-	snapshot Snapshot
+	snapshot protocol.Snapshot
 	hasState bool
 }
 
 func NewStore() *Store { return &Store{} }
 
-func (s *Store) Replace(snapshot Snapshot) error {
+func (s *Store) Replace(snapshot protocol.Snapshot) error {
 	if len(snapshot.Rows) == 0 {
 		return errors.New("payload contains no explicitly observed rows")
 	}
@@ -81,33 +64,33 @@ func (s *Store) Replace(snapshot Snapshot) error {
 	return nil
 }
 
-func (s *Store) Latest() (Snapshot, bool) {
+func (s *Store) Latest() (protocol.Snapshot, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if !s.hasState {
-		return Snapshot{}, false
+		return protocol.Snapshot{}, false
 	}
 	// Return a defensive copy so callers cannot mutate shared state.
 	out := s.snapshot
-	out.Rows = append([]Row(nil), s.snapshot.Rows...)
+	out.Rows = append([]protocol.Row(nil), s.snapshot.Rows...)
 	for i := range out.Rows {
-		out.Rows[i].Cells = append([]Cell(nil), s.snapshot.Rows[i].Cells...)
+		out.Rows[i].Cells = append([]protocol.Cell(nil), s.snapshot.Rows[i].Cells...)
 	}
 	return out, true
 }
 
-func (s *Store) Row(number int) (Row, bool) {
+func (s *Store) Row(number int) (protocol.Row, bool) {
 	if number < 1 || number > 100 {
-		return Row{}, false
+		return protocol.Row{}, false
 	}
 	snapshot, ok := s.Latest()
 	if !ok {
-		return Row{}, false
+		return protocol.Row{}, false
 	}
 	for _, row := range snapshot.Rows {
 		if row.Number == number {
 			return row, true
 		}
 	}
-	return Row{}, false
+	return protocol.Row{}, false
 }

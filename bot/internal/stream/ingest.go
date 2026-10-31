@@ -2,7 +2,6 @@ package stream
 
 import (
 	"crypto/subtle"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log"
@@ -10,11 +9,9 @@ import (
 	"strings"
 
 	"iron-v1-bot/internal/protocol"
-	"iron-v1-bot/internal/vision"
 )
 
 const maxIngestBytes = 64 * 1024
-const maxImageRequestBytes = 6 << 20
 
 type IngestEvent struct {
 	Source  string          `json:"source,omitempty"`
@@ -40,46 +37,6 @@ func (s *IngestServer) Handler() http.Handler {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(w, `{"status":"ok"}`)
-	})
-	mux.HandleFunc("/analyze-image", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		if !authorizedBearer(r, s.Token) {
-			if s.Token == "" {
-				http.Error(w, "image analysis authentication is not configured", http.StatusServiceUnavailable)
-			} else {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-			}
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, maxImageRequestBytes)
-		var req vision.Request
-		dec := json.NewDecoder(r.Body)
-		if err := dec.Decode(&req); err != nil {
-			http.Error(w, "invalid image-analysis JSON", http.StatusBadRequest)
-			return
-		}
-		var trailing any
-		if err := dec.Decode(&trailing); err != io.EOF {
-			http.Error(w, "request must contain exactly one JSON value", http.StatusBadRequest)
-			return
-		}
-		imageBytes, err := base64.StdEncoding.DecodeString(req.ImageBase64)
-		if err != nil {
-			http.Error(w, "image_base64 must be valid standard base64", http.StatusBadRequest)
-			return
-		}
-		result, err := vision.Analyze(imageBytes, req)
-		if err != nil {
-			http.Error(w, "image rejected: "+err.Error(), http.StatusUnprocessableEntity)
-			return
-		}
-		// Never log the image, its base64 representation, or session identifiers.
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(result)
 	})
 	mux.HandleFunc("/ingest", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

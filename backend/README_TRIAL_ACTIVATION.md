@@ -20,7 +20,7 @@ A new license begins with two trial uses. The server decrements the counter, and
 
 ## Environment
 
-Copy `.env` to `.env` for local development and replace all placeholders. Do not commit `.env` or share production secrets. The `ADMIN_API_KEY` protects admin routes; use HTTPS in production.
+Copy `.env.example` to `.env` for local development and replace all placeholders. Do not commit `.env` or share production secrets. The `ADMIN_API_KEY` protects admin routes; use HTTPS in production.
 
 ## Validation performed
 
