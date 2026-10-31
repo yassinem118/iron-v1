@@ -1,7 +1,7 @@
 # Iron Control Admin
 
 ## Development
-Copy `.env.example` to `.env.local`, set `VITE_API_URL` to the backend base URL (for example `http://localhost:3000`), run `npm ci`, then `npm run dev`.
+Copy `.env` to `.env.local`, set `VITE_API_URL` to the backend base URL (for example `http://localhost:3000`), run `npm ci`, then `npm run dev`.
 
 ## Production
 Set `VITE_API_URL` to the HTTPS backend URL and run `npm ci && npm run build`. Serve `dist/` behind HTTPS. Configure backend CORS to allow this admin origin and set the matching `ADMIN_API_KEY` on the server.

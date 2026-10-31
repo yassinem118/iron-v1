@@ -5,8 +5,8 @@
 **/.git
 **/.env
 **/.env.*
-!**/.env.example
-!**/.env.production.example
+!**/.env
+!**/.env.production
 **/*.jks
 **/key.properties
 **/secrets
