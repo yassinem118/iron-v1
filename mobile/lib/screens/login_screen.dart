@@ -123,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 36),
                         const Text(
-                          'IRON ACCOUNT ID',
+                          'MELBET ACCOUNT ID',
                           style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           textInputAction: TextInputAction.next,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'User ID / License ID',
+                            hintText: 'Enter your Melbet User ID',
                             hintStyle: const TextStyle(color: Colors.white38),
                             prefixIcon: const Icon(Icons.person_outline, color: accent),
                             filled: true,
@@ -149,11 +149,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           validator: (v) => v == null || v.trim().isEmpty
-                              ? 'Enter a valid ID or Email' : null,
+                              ? 'Enter a valid Melbet ID' : null,
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          'PASSWORD',
+                          'MELBET PASSWORD',
                           style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
@@ -164,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onFieldSubmitted: (_) => _submit(),
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'Your password',
+                            hintText: 'Enter your Melbet password',
                             hintStyle: const TextStyle(color: Colors.white38),
                             prefixIcon: const Icon(Icons.lock_outline, color: accent),
                             filled: true,
@@ -183,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               icon: Icon(_hide ? Icons.visibility : Icons.visibility_off, color: Colors.white70),
                             ),
                           ),
-                          validator: (v) => v == null || v.isEmpty ? 'Enter your password' : null,
+                          validator: (v) => v == null || v.isEmpty ? 'Enter your Melbet password' : null,
                         ),
                         if (_error != null) ...[
                           const SizedBox(height: 14),
@@ -218,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          'استعمل بيانات الدخول الخاصة بحساب IRON فقط. ما تدخلش كلمة سر حساب Melbet هنا.',
+                          'استعمل بيانات الدخول الخاصة بحساب Melbet حصرياً للربط بالمنصة.',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 11, color: Colors.white38),
                         ),

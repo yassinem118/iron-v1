@@ -34,6 +34,16 @@
     </application>
     
     <queries>
+        <!-- السماح للتطبيق برؤية المتصفحات الخارجية لفتح روابط الـ HTTP/HTTPS -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <!-- الحفاظ على الإعداد القديم إذا كان التطبيق محتاجه -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
