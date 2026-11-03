@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class ApiService {
   static const baseUrl = String.fromEnvironment(
     'IRON_API_URL',
-    defaultValue: 'https://iron-v1backend.nue.dom.my.id/',
+    defaultValue: 'https://api.iron.com',
   );
 
   Future<String?> login(String accountId, String password) async {

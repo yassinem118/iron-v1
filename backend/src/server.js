@@ -4,8 +4,11 @@ import { env } from './config/env.js';
 
 async function main() {
   try {
-    // 1. الاتصال بقاعدة البيانات أولاً
-    await mongoose.connect(env.mongoUri);
+    // 1. الاتصال بقاعدة البيانات أولاً مع إضافة خيارات المهلة الزمنية لتفادي التوقف في DomCloud
+    await mongoose.connect(env.mongoUri, {
+      serverSelectionTimeoutMS: 5000, // مهلة 5 ثواني كحد أقصى للبحث عن السيرفر
+      socketTimeoutMS: 45000,          // مهلة الاتصال بالـ Socket
+    });
     console.log('Connected to MongoDB successfully');
 
     // 2. تشغيل السيرفر باش يبقى ديما شغال (Long-running)
