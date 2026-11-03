@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class ApiService {
   static const baseUrl = String.fromEnvironment(
     'IRON_API_URL',
-    defaultValue: 'https://api.iron.com',
+    defaultValue: 'https://iron-v1.vercel.app', // تم تعديل هذا السطر لتجنب مشكل double slash
   );
 
   Future<String?> login(String accountId, String password) async {
@@ -31,4 +31,4 @@ class ApiService {
       return 'Could not reach the server. Check your connection and try again.';
     }
   }
-}
+ }

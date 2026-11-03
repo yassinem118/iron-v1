@@ -20,7 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   static const _apiBaseUrl = String.fromEnvironment(
     'IRON_API_URL',
-    defaultValue: 'https://YOUR_API_HOST',
+    defaultValue: 'https://iron-v1.vercel.app',
   );
 
   @override

@@ -39,7 +39,7 @@ class RoundsDashboard extends StatefulWidget {
 }
 
 class _RoundsDashboardState extends State<RoundsDashboard> with WidgetsBindingObserver {
-  static const _baseUrl = String.fromEnvironment('IRON_API_URL', defaultValue: 'http://78.154.103.8:16673');
+  static const _baseUrl = String.fromEnvironment('IRON_API_URL', defaultValue: 'https://iron-v1.vercel.app'); // تم تحديث الرابط هنا
   static const _roundsPath = String.fromEnvironment('IRON_ROUNDS_PATH', defaultValue: '/api/rounds');
   static const _melbetUrl = String.fromEnvironment('MELBET_URL', defaultValue: 'https://melbet.com/');
   final List<RoundRecord> _rounds = [];
