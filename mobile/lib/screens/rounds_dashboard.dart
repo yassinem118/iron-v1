@@ -125,12 +125,11 @@ class _RoundsDashboardState extends State<RoundsDashboard> {
                     ? Center(
                         child: Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
                       )
-                    : _rounds.isEmpty
-                        .isEmpty // ملاحظة: تعديل التحقق من القائمة الفارغة
-                        ? const Center(
-                            child: Text('لا توجد جولات متاحة حالياً. في انتظار بيانات البوت...', 
-                            style: TextStyle(color: Colors.white54), textAlign: TextAlign.center),
-                          )
+                    _rounds.isEmpty
+    ? const Center(
+        child: Text('لا توجد جولات متاحة حالياً. في انتظار بيانات البوت...', 
+        style: TextStyle(color: Colors.white54), textAlign: TextAlign.center),
+      )
                         : ListView.builder(
                             padding: const EdgeInsets.all(16),
                             itemCount: _rounds.length,
