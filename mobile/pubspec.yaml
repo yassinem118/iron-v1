@@ -25,6 +25,6 @@ flutter:
     - assets/icon/
 
 flutter_launcher_icons:
-  image_path: "assets/icon/icon.png"
+  image_path: "assets/icon/iron.png"
   android: true
   ios: true

