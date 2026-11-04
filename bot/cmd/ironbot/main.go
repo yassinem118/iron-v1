@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -24,27 +25,25 @@ import (
 const (
 	maxConcurrentHandlers = 48
 	databaseName          = "iron_v1_db"
-	collectionName        = "telemetry"
+	authCollectionName    = "users_auth" // مخصص فقط لبيانات المصادقة وتسجيل الدخول
 	dbTimeout             = 5 * time.Second
 )
 
-type telemetryDocument struct {
-	UserID     int64     `bson:"userId"`
-	RawFrame   string    `bson:"rawFrame"`
-	Event      string    `bson:"event,omitempty"`
-	GameID     string    `bson:"gameId,omitempty"`
-	ObservedAt time.Time `bson:"observedAt"`
-	CreatedAt  time.Time `bson:"createdAt"`
+// authDocument مخصص لتخزين بيانات تسجيل الدخول والمصادقة للزبائن فقط في قاعدة البيانات
+type authDocument struct {
+	UserID       int64     `bson:"userId" json:"userId"`
+	Username     string    `bson:"username,omitempty" json:"username"`
+	SessionToken string    `bson:"sessionToken,omitempty" json:"sessionToken"`
+	UpdatedAt    time.Time `bson:"updatedAt" json:"updatedAt"`
 }
 
 type userSession struct {
-	userID     int64
-	store      *state.Store
-	collection *mongo.Collection
+	userID       int64
+	store        *state.Store
+	authCollection *mongo.Collection
 }
 
 func main() {
-	// تحميل ملف .env افتراضياً دون إيقاف البرنامج إن لم يوجد، مع تسجيل تحذير عند حدوث خطأ آخر
 	if err := godotenv.Load(); err != nil {
 		if !os.IsNotExist(err) {
 			log.Printf("Warning: error loading .env file: %v", err)
@@ -78,9 +77,7 @@ func main() {
 		}
 	}
 
-	pingCtx, pingCancel := context.WithTimeout(
-		context.Background(), 10*time.Second,
-	)
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	err = client.Ping(pingCtx, readpref.Primary())
 	pingCancel()
 	if err != nil {
@@ -88,24 +85,7 @@ func main() {
 		log.Fatalf("MongoDB ping failed: %v", err)
 	}
 
-	collection := client.Database(databaseName).Collection(collectionName)
-
-	// Optimize queries that retrieve the latest frame for a Telegram user.
-	indexCtx, indexCancel := context.WithTimeout(
-		context.Background(), 10*time.Second,
-	)
-	_, err = collection.Indexes().CreateOne(indexCtx, mongo.IndexModel{
-		Keys: bson.D{
-			{Key: "userId", Value: 1},
-			{Key: "createdAt", Value: -1},
-		},
-		Options: options.Index().SetName("user_latest_snapshot"),
-	})
-	indexCancel()
-	if err != nil {
-		disconnect()
-		log.Fatalf("MongoDB index initialization failed: %v", err)
-	}
+	authCollection := client.Database(databaseName).Collection(authCollectionName)
 
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -115,7 +95,10 @@ func main() {
 	bot.Debug = false
 
 	allowed := parseAllowlist(os.Getenv("ALLOWED_USER_IDS"))
-	stores := newUserStores(collection)
+	stores := newUserStores(authCollection)
+
+	// بدء تشغيل خادم HTTP الخاص بالـ Dashboard والربط مع العميل (Dashboard API & Ingestion)
+	go startDashboardServer(stores)
 
 	updates := tgbotapi.NewUpdate(0)
 	updates.Timeout = 30
@@ -124,10 +107,7 @@ func main() {
 	sem := make(chan struct{}, maxConcurrentHandlers)
 	var wg sync.WaitGroup
 
-	log.Printf(
-		"Iron v1 read-only observer started as @%s; MongoDB persistence enabled",
-		bot.Self.UserName,
-	)
+	log.Printf("Iron v1 Backend & Bot started as @%s; Auth persistence in MongoDB enabled", bot.Self.UserName)
 
 	for update := range updateChan {
 		if update.Message == nil || update.Message.From == nil {
@@ -147,7 +127,7 @@ func main() {
 				defer wg.Done()
 				defer func() { <-sem }()
 
-				session := stores.For(m.From.ID)
+				session := stores.For(m.From.ID, m.From.UserName)
 				reply := handle(strings.TrimSpace(m.Text), session)
 				if reply == "" {
 					return
@@ -175,28 +155,98 @@ func main() {
 	disconnect()
 }
 
+// startDashboardServer تشغيل خادم HTTP لتزويد لوحة التحكم (Dashboard) بنتائج كل زبون معزولة
+func startDashboardServer(stores *userStores) {
+	mux := http.NewServeMux()
+
+	// نقطة نهاية لجلب حالة اللعبة الخاصة بالزبون للـ Dashboard
+	mux.HandleFunc("/api/dashboard/state", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		userIDStr := r.URL.Query().Get("userId")
+		userID, err := strconv.ParseInt(userIDStr, 10, 64)
+		if err != nil || userID == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"valid userId is required"}`))
+			return
+		}
+
+		session := stores.For(userID, "")
+		snapshot, ok := session.store.Latest()
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"no active game state found for user"}`))
+			return
+		}
+
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"success": true,
+			"userId":  userID,
+			"gameId":  snapshot.GameID,
+			"event":   snapshot.Event,
+			"seenAt":  snapshot.SeenAt,
+			"rows":    snapshot.Rows,
+		})
+	})
+
+	// نقطة نهاية لاستقبال إطارات اللعبة المباشرة الموجهة لكل زبون (تحديث فوري للـ Dashboard)
+	mux.HandleFunc("/api/dashboard/parse", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+
+		var req struct {
+			UserID int64  `json:"userId"`
+			Raw    string `json:"raw"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == 0 || req.Raw == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid payload or missing userId"}`))
+			return
+		}
+
+		session := stores.For(req.UserID, "")
+		snapshot, err := protocol.ParseFrame([]byte(req.Raw))
+		if err != nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_, _ = w.Write([]byte(`{"error":"` + err.Error() + `"}`))
+			return
+		}
+
+		if err := session.store.Replace(snapshot); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"` + err.Error() + `"}`))
+			return
+		}
+
+		_, _ = w.Write([]byte(`{"success":true,"message":"frame updated for user successfully"}`))
+	})
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("Dashboard HTTP server running on port %s", port)
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
+		log.Fatalf("Dashboard server failed: %v", err)
+	}
+}
+
 func handle(input string, session *userSession) string {
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return ""
 	}
 
-	if strings.HasPrefix(input, "/start") ||
-		strings.HasPrefix(input, "/help") {
-		return "Iron v1 — read-only game-state observer\n" +
-			"/current: show latest observed grid\n" +
-			"/row N: show explicitly observed cells in row N\n" +
-			"/parse <JSON>: parse and persist an authorized JSON frame/log\n\n" +
-			"Unknown or unrevealed cells are never labelled safe, " +
-			"and the bot does not predict gambling outcomes."
+	if strings.HasPrefix(input, "/start") || strings.HasPrefix(input, "/help") {
+		return "Iron v1 — Isolated User Game Observer\n" +
+			"/current: show your latest observed grid\n" +
+			"/row N: show your explicitly observed cells in row N\n" +
+			"/parse <JSON>: parse and load your frame"
 	}
 
 	if input == "/current" || strings.HasPrefix(input, "/current@") {
-		if err := session.refreshLatest(); err != nil {
-			log.Printf("MongoDB current lookup failed for user %d: %v",
-				session.userID, err)
-			return "Could not load the latest frame from the database. Please retry."
-		}
 		return renderSnapshot(session.store)
 	}
 
@@ -215,27 +265,7 @@ func handle(input string, session *userSession) string {
 			return "Frame rejected: " + err.Error()
 		}
 
-		doc := telemetryDocument{
-			UserID:     session.userID,
-			RawFrame:   raw,
-			Event:      snapshot.Event,
-			GameID:     snapshot.GameID,
-			ObservedAt: snapshot.SeenAt,
-			CreatedAt:  time.Now().UTC(),
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
-		_, err = session.collection.InsertOne(ctx, doc)
-		cancel()
-		if err != nil {
-			log.Printf("MongoDB frame insert failed for user %d: %v",
-				session.userID, err)
-			return "Frame parsed, but database storage failed. " +
-				"Please retry; the frame was not confirmed as saved."
-		}
-
-		return "Observed frame stored in MongoDB.\n" +
-			renderSnapshot(session.store)
+		return "Observed frame updated successfully for your session.\n" + renderSnapshot(session.store)
 	}
 
 	if strings.HasPrefix(input, "/row ") {
@@ -251,62 +281,22 @@ func handle(input string, session *userSession) string {
 		return "Use /row N where N is between 1 and 100."
 	}
 
-	if err := session.refreshLatest(); err != nil {
-		log.Printf("MongoDB row lookup failed for user %d: %v",
-			session.userID, err)
-		return "Could not load the latest frame from the database. Please retry."
-	}
-
 	row, ok := session.store.Row(rowNo)
 	if !ok {
-		return "No observed data for row " + strconv.Itoa(rowNo) +
-			". Import a JSON frame with /parse first."
+		return "No observed data for row " + strconv.Itoa(rowNo)
 	}
 
 	return renderRow(row)
 }
 
-// refreshLatest reloads the most recently stored frame for this user.
-// The original JSON is retained so the existing protocol parser remains
-// the single source of truth for interpreting frames.
-func (s *userSession) refreshLatest() error {
-	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
-	defer cancel()
-
-	var doc telemetryDocument
-	err := s.collection.FindOne(
-		ctx,
-		bson.D{{Key: "userId", Value: s.userID}},
-		options.FindOne().SetSort(
-			bson.D{{Key: "createdAt", Value: -1}},
-		),
-	).Decode(&doc)
-
-	if errors.Is(err, mongo.ErrNoDocuments) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	snapshot, err := protocol.ParseFrame([]byte(doc.RawFrame))
-	if err != nil {
-		return err
-	}
-
-	return s.store.Replace(snapshot)
-}
-
 func renderSnapshot(store *state.Store) string {
 	snapshot, ok := store.Latest()
 	if !ok {
-		return "No observed game frame yet. Use /parse with an authorized " +
-			"JSON frame/log; this bot does not connect to the betting service " +
-			"or generate predictions."
+		return "No observed game frame yet for your session."
 	}
 
 	var b strings.Builder
-	b.WriteString("Latest observed grid (read-only)\n")
+	b.WriteString("Your Latest observed grid (Isolated)\n")
 
 	if snapshot.Event != "" {
 		b.WriteString("Event: ")
@@ -320,19 +310,10 @@ func renderSnapshot(store *state.Store) string {
 		b.WriteByte('\n')
 	}
 
-	b.WriteString("Observed: ")
-	b.WriteString(snapshot.SeenAt.UTC().Format(time.RFC3339))
-	b.WriteByte('\n')
-
 	for _, row := range snapshot.Rows {
 		b.WriteString(renderRow(row))
 		b.WriteByte('\n')
 	}
-
-	b.WriteString(
-		"Only source-reported statuses are shown; " +
-			"blank/unrevealed cells are unknown, not safe picks.",
-	)
 
 	return strings.TrimSpace(b.String())
 }
@@ -386,33 +367,46 @@ func parseAllowlist(raw string) map[int64]bool {
 	return result
 }
 
-// userStores keeps a separate in-memory cache for each Telegram user.
-// MongoDB documents are also scoped by userId.
 type userStores struct {
-	mu         sync.Mutex
-	byUser     map[int64]*userSession
-	collection *mongo.Collection
+	mu             sync.Mutex
+	byUser         map[int64]*userSession
+	authCollection *mongo.Collection
 }
 
-func newUserStores(collection *mongo.Collection) *userStores {
-	return &userStores{
-		byUser:     make(map[int64]*userSession),
-		collection: collection,
-	}
+func newUserStores(authCollection *mongo.Collection) *userStores {
+     return &userStores{
+         byUser:         make(map[int64]*userSession),
+         authCollection: authCollection,
+     }
 }
 
-func (s *userStores) For(userID int64) *userSession {
+// For تقوم بإنشاء أو جلب الجلسة المعزولة الخاصة بالزبون وتخزين بيانات المصادقة في القاعدة
+func (s *userStores) For(userID int64, username string) *userSession {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	session := s.byUser[userID]
 	if session == nil {
 		session = &userSession{
-			userID:     userID,
-			store:      state.NewStore(),
-			collection: s.collection,
+			userID:         userID,
+			store:          state.NewStore(),
+			authCollection: s.authCollection,
 		}
 		s.byUser[userID] = session
+
+		// حفظ بيانات المصادقة فقط في MongoDB بشكل غير متزامن
+		go func(uid int64, uname string) {
+			ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+			defer cancel()
+			
+			filter := bson.D{{Key: "userId", Value: uid}}
+			update := bson.D{{Key: "$set", Value: bson.D{
+				{Key: "username", Value: uname},
+				{Key: "updatedAt", Value: time.Now().UTC()},
+			}}}
+			opts := options.Update().SetUpsert(true)
+			_, _ = s.authCollection.UpdateOne(ctx, filter, update, opts)
+		}(userID, username)
 	}
 
 	return session

@@ -14,6 +14,7 @@ import (
 const maxIngestBytes = 64 * 1024
 
 type IngestEvent struct {
+	UserID  int64           `json:"userId,omitempty"` // تم إضافة معرف الزبون لتوجيه الإطار لعزله
 	Source  string          `json:"source,omitempty"`
 	URL     string          `json:"url,omitempty"`
 	Kind    string          `json:"kind,omitempty"`
@@ -23,7 +24,7 @@ type IngestEvent struct {
 type IngestServer struct {
 	Token   string
 	Logger  *log.Logger
-	OnFrame func([]byte) error
+	OnFrame func(userID int64, payload []byte) error // تحديث الدالة لاستقبال userId مع الـ payload
 }
 
 // Handler accepts operator-forwarded, authorized frame samples. It is not a
@@ -74,13 +75,13 @@ func (s *IngestServer) Handler() http.Handler {
 			return
 		}
 		if s.OnFrame != nil {
-			if err := s.OnFrame(ev.Payload); err != nil {
+			if err := s.OnFrame(ev.UserID, ev.Payload); err != nil {
 				http.Error(w, "frame rejected", http.StatusUnprocessableEntity)
 				return
 			}
 		}
 		if s.Logger != nil {
-			s.Logger.Printf("ingested authorized frame kind=%q bytes=%d", safeKind(ev.Kind), len(ev.Payload))
+			s.Logger.Printf("ingested authorized frame userId=%d kind=%q bytes=%d", ev.UserID, safeKind(ev.Kind), len(ev.Payload))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
@@ -120,4 +121,4 @@ func authorizedBearer(r *http.Request, token string) bool {
 	}
 	got := strings.TrimPrefix(header, prefix)
 	return len(got) == len(token) && subtle.ConstantTimeCompare([]byte(got), []byte(token)) == 1
-}
+ }

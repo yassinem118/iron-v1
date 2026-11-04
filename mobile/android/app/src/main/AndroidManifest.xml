@@ -5,7 +5,7 @@
     <application
         android:label="iron_v1"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/launcher_icon"
         android:usesCleartextTraffic="true"> 
         
         <activity
@@ -34,6 +34,12 @@
     </application>
     
     <queries>
+        <!-- السماح بالتطبيق برؤية وفتح تطبيق Melbet مباشرة عبر الـ Scheme الخاص به -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="melbet" />
+        </intent>
+
         <!-- السماح للتطبيق برؤية المتصفحات الخارجية لفتح روابط الـ HTTP/HTTPS -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -43,6 +49,7 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="http" />
         </intent>
+        
         <!-- الحفاظ على الإعداد القديم إذا كان التطبيق محتاجه -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
