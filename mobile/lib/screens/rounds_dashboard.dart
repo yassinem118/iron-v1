@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'url_launcher/url_launcher.dart'; // أو حزمة url_launcher العادية
+import 'package:url_launcher/url_launcher.dart';
 
 class RoundsDashboard extends StatefulWidget {
   const RoundsDashboard({super.key});
