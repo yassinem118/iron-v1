@@ -112,7 +112,7 @@ class _RoundsDashboardState extends State<RoundsDashboard> {
                     Text('البوت متصل ويفك التشفير', style: TextStyle(color: Colors.white70, fontSize: 12)),
                   ],
                 ),
-                Text('تحديث كل 5 ثوانٍ', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                const Text('تحديث كل 5 ثوانٍ', style: TextStyle(color: Colors.white38, fontSize: 11)),
               ],
             ),
           ),
@@ -125,11 +125,14 @@ class _RoundsDashboardState extends State<RoundsDashboard> {
                     ? Center(
                         child: Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
                       )
-                    _rounds.isEmpty
-    ? const Center(
-        child: Text('لا توجد جولات متاحة حالياً. في انتظار بيانات البوت...', 
-        style: TextStyle(color: Colors.white54), textAlign: TextAlign.center),
-      )
+                    : _rounds.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'لا توجد جولات متاحة حالياً. في انتظار بيانات البوت...',
+                              style: TextStyle(color: Colors.white54),
+                              textAlign: TextAlign.center,
+                            ),
+                          )
                         : ListView.builder(
                             padding: const EdgeInsets.all(16),
                             itemCount: _rounds.length,
