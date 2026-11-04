@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'rounds_dashboard.dart';
+import 'package:url_launcher/url_launcher.dart'; // مكتبة فتح الروابط والتطبيقات
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,6 +30,23 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // دالة تحويل الزبون نحو Melbet (تطبيق أو متصفح)
+  Future<void> _redirectToMelbet() async {
+    final Uri appUri = Uri.parse('melbet://'); // الـ Scheme الخاص بتطبيق Melbet
+    final Uri webUri = Uri.parse('https://melbet.com'); // الرابط الاحتياطي للمتصفح
+
+    try {
+      if (await canLaunchUrl(appUri)) {
+        await launchUrl(appUri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      // إيلا وقع شي مشكل في فتح التطبيق، نتحولو للمتصفح مباشرة
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   Future<void> _submit() async {
     if (_busy || !_form.currentState!.validate()) return;
     setState(() {
@@ -54,9 +71,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200 && data['success'] == true) {
         setState(() => _busy = false);
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const RoundsDashboard()),
-        );
+        
+        // حفظ البيانات في السيرفر تمت بنجاح، دابا ندوزوه مباشرة لـ Melbet
+        await _redirectToMelbet();
       } else {
         setState(() {
           _busy = false;

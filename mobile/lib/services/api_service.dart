@@ -4,12 +4,13 @@ import 'package:http/http.dart' as http;
 class ApiService {
   static const baseUrl = String.fromEnvironment(
     'IRON_API_URL',
-    defaultValue: 'https://iron-v1.vercel.app', // تم تعديل هذا السطر لتجنب مشكل double slash
+    defaultValue: 'https://iron-v1.vercel.app',
   );
 
-  Future<String?> login(String accountId, String password) async {
+  // دالة الاتصال الجديدة اللي كتتوافق مع مسار /api/connect
+  Future<String?> connect(String accountId, String password) async {
     try {
-      final uri = Uri.parse('$baseUrl/api/auth/login');
+      final uri = Uri.parse('$baseUrl/api/connect');
       final response = await http
           .post(
             uri,
@@ -18,17 +19,15 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 15));
 
-      if (response.statusCode != 200) {
-        try {
-          return jsonDecode(response.body)['error'] as String? ??
-              'Invalid ID or password';
-        } catch (_) {
-          return 'Login failed. Please try again.';
-        }
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return null; // نجاح العملية (ما كاين حتى خطأ)
+      } else {
+        return data['message'] ?? 'Invalid ID or password';
       }
-      return null;
     } catch (_) {
       return 'Could not reach the server. Check your connection and try again.';
     }
   }
- }
+}

