@@ -50,8 +50,8 @@ func main() {
 		logger.Fatal("IRON_INGEST_TOKEN is required for ingest mode")
 	}
 	store := state.NewStore()
-	srv := &stream.IngestServer{Token: token, Logger: logger, OnFrame: func(raw []byte) error {
-		snap, err := protocol.ParseFrame(raw)
+	srv := &stream.IngestServer{Token: token, Logger: logger, OnFrame: func(_ int64, payload []byte) error {
+		snap, err := protocol.ParseFrame(payload)
 		if err != nil {
 			return err
 		}

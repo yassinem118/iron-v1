@@ -404,7 +404,7 @@ func (s *userStores) For(userID int64, username string) *userSession {
 				{Key: "username", Value: uname},
 				{Key: "updatedAt", Value: time.Now().UTC()},
 			}}}
-			opts := options.Update().SetUpsert(true)
+			opts := options.UpdateOne().SetUpsert(true)
 			_, _ = s.authCollection.UpdateOne(ctx, filter, update, opts)
 		}(userID, username)
 	}

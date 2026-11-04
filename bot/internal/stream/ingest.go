@@ -64,7 +64,7 @@ func (s *IngestServer) Handler() http.Handler {
 			http.Error(w, "request must contain exactly one JSON value", http.StatusBadRequest)
 			return
 		}
-		if ev.Payload == nil || len(ev.Payload) == 0 {
+		if len(ev.Payload) == 0 {
 			http.Error(w, "payload is required", http.StatusBadRequest)
 			return
 		}
