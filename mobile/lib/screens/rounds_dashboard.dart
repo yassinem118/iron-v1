@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -12,29 +11,19 @@ class RoundsDashboard extends StatefulWidget {
 }
 
 class _RoundsDashboardState extends State<RoundsDashboard> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   List<dynamic> _rounds = [];
   String? _error;
-  Timer? _timer;
 
   static const String _apiBaseUrl = 'https://iron-v1.vercel.app'; // رابط الباك إند
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchAppleFortuneResults();
-    // جلب النتائج تلقائياً كل 5 ثوانٍ لتحديث مباشر (Live)
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchAppleFortuneResults());
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  // جلب النتائج الخاصة بلعبة Apple Fortune من مسار الـ Backend
+  // دالة طلب الـ Hack وجلب النتائج الحقيقية عند النقر على الزر
   Future<void> _fetchAppleFortuneResults() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
       final response = await http.get(Uri.parse('$_apiBaseUrl/api/apple-fortune/rounds'));
       
@@ -45,7 +34,6 @@ class _RoundsDashboardState extends State<RoundsDashboard> {
         setState(() {
           _rounds = data['rounds'] ?? [];
           _isLoading = false;
-          _error = null;
         });
       } else {
         setState(() {
@@ -57,19 +45,20 @@ class _RoundsDashboardState extends State<RoundsDashboard> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = 'خطأ في الاتصال بالشبكة.';
+        _error = 'خطأ في الاتصال بالشبكة. تأكد من الإنترنت.';
       });
     }
   }
 
-  // دالة فتح تطبيق Melbet مباشرة
+  // دالة فتح تطبيق Melbet عبر الـ Intent
   Future<void> _openMelbet() async {
-    final Uri appUri = Uri.parse('melbet://');
+    final Uri appUri = Uri.parse('intent://#Intent;package=com.melbet.client;end;');
     final Uri webUri = Uri.parse('https://melbet.com');
+    
     try {
       if (await canLaunchUrl(appUri)) {
         await launchUrl(appUri, mode: LaunchMode.externalApplication);
-      } else {
+      } else if (await canLaunchUrl(webUri)) {
         await launchUrl(webUri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {
@@ -79,7 +68,7 @@ class _RoundsDashboardState extends State<RoundsDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    const accentColor = Color(0xFFFF2A2A); // أحمر دموي تناسقاً مع الهوية الجديدة
+    const accentColor = Color(0xFFFF2A2A); // اللون الأحمر الدموي لهوية IRON
 
     return Scaffold(
       backgroundColor: const Color(0xFF080C12),
@@ -88,11 +77,9 @@ class _RoundsDashboardState extends State<RoundsDashboard> {
         title: const Text('IRON // APPLE FORTUNE LIVE', style: TextStyle(color: accentColor, fontWeight: FontWeight.w900, fontSize: 16)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white70),
-            onPressed: () {
-              setState(() => _isLoading = true);
-              _fetchAppleFortuneResults();
-            },
+            icon: const Icon(Icons.open_in_new, color: Colors.white70),
+            onPressed: _openMelbet,
+            tooltip: 'فتح Melbet',
           ),
         ],
       ),
@@ -112,67 +99,152 @@ class _RoundsDashboardState extends State<RoundsDashboard> {
                     Text('البوت متصل ويفك التشفير', style: TextStyle(color: Colors.white70, fontSize: 12)),
                   ],
                 ),
-                const Text('تحديث كل 5 ثوانٍ', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                Text(_rounds.isEmpty ? 'في انتظار طلب الـ Hack' : 'تم جلب النتائج بنجاح', style: const TextStyle(color: Colors.white38, fontSize: 11)),
               ],
             ),
           ),
           
-          // عرض النتائج القادمة من البوت
+          // عرض الشبكة: إما فارغة ومنتظمة في البداية، أو معمرة بالنتائج الحقيقية عند النقر
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: accentColor))
-                : _error != null
-                    ? Center(
-                        child: Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
-                      )
-                    : _rounds.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'لا توجد جولات متاحة حالياً. في انتظار بيانات البوت...',
-                              style: TextStyle(color: Colors.white54),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _rounds.length,
-                            itemBuilder: (context, index) {
-                              final round = _rounds[index];
-                              return Card(
-                                color: const Color(0xFF111823),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: const BorderSide(color: Colors.redAccent, width: 0.5),
-                                ),
-                                margin: const EdgeInsets.only(bottom: 12),
-                                child: ListTile(
-                                  leading: const Icon(Icons.security, color: accentColor),
-                                  title: Text('جولة رقم: ${round['roundId'] ?? index + 1}', 
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                  subtitle: Text('النتيجة المؤكدة: ${round['prediction'] ?? 'جاري التحليل...'}', 
-                                      style: const TextStyle(color: Colors.white70)),
-                                  trailing: const Text('LIVE', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                                ),
-                              );
-                            },
+            child: _rounds.isEmpty
+                ? Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'اضغط على زر "HACK APPLE FORTUNE" أدناه\nبعد بدء الجولة في تطبيق Melbet',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
                           ),
+                          const SizedBox(height: 25),
+                          // عرض 10 صفوف فارغة مطابقة للعبة Apple Fortune (كل صف فيه 5 خانات دائرية)
+                          ...List.generate(10, (rowIndex) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF111823),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white12, width: 1),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: List.generate(5, (colIndex) {
+                                  return Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1A2638),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white24, width: 1),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${colIndex + 1}',
+                                        style: const TextStyle(color: Colors.white38, fontSize: 11),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            );
+                          }),
+                          if (_error != null) ...[
+                            const SizedBox(height: 15),
+                            Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+                          ],
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _rounds.length,
+                    itemBuilder: (context, index) {
+                      final round = _rounds[index];
+                      final int safeColumn = round['safeColumn'] ?? -1;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF111823),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: accentColor.withOpacity(0.4), width: 1),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'الجولة / الصف: ${round['roundId'] ?? index + 1}',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                                const Text('LIVE SIGNAL', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // عرض 5 خانات لكل صف وتلوين الخانة الآمنة الحقيقية القادمة من السيرفر
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: List.generate(5, (colIndex) {
+                                final bool isSafe = colIndex == safeColumn;
+                                return Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: isSafe ? accentColor.withOpacity(0.3) : const Color(0xFF1A2638),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isSafe ? accentColor : Colors.white24,
+                                      width: isSafe ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: isSafe
+                                        ? const Icon(Icons.star, color: accentColor, size: 20)
+                                        : Text(
+                                            '${colIndex + 1}',
+                                            style: const TextStyle(color: Colors.white38, fontSize: 11),
+                                          ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
           ),
 
-          // زر فتح Melbet السريع في الأسفل
+          // زر HACK APPLE FORTUNE في الأسفل للتحكم اليدوي بعد اللعب
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: SizedBox(
               width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
+              height: 52,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
                   backgroundColor: accentColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: _openMelbet,
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('فتح تطبيق Melbet للعب', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                onPressed: _isLoading ? null : _fetchAppleFortuneResults,
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text(
+                        'HACK APPLE FORTUNE',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                      ),
               ),
             ),
           ),

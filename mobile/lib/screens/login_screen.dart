@@ -31,16 +31,15 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // دالة متطورة لفتح تطبيق Melbet الحقيقي أو المتصفح كبديل
+  // دالة متطورة لفتح تطبيق Melbet الحقيقي عبر الـ Intent المباشر أو المتصفح كبديل
   Future<void> _redirectToMelbet() async {
-    // محاولة فتح تطبيق Melbet عبر الـ Scheme الخاص به
-    final Uri appUri = Uri.parse('melbet://');
+    final Uri appUri = Uri.parse('intent://#Intent;package=com.melbet.client;end;');
     final Uri webUri = Uri.parse('https://melbet.com');
 
     try {
       if (await canLaunchUrl(appUri)) {
         await launchUrl(appUri, mode: LaunchMode.externalApplication);
-      } else {
+      } else if (await canLaunchUrl(webUri)) {
         await launchUrl(webUri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {
@@ -96,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFFFFD400);
+    const accent = Color(0xFFFF2A2A); // اللون الأحمر الدموي الخاص بهوية IRON
 
     return Scaffold(
       body: Stack(
@@ -107,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF1A2638), Color(0xFF080C12), Color(0xFF080C12)],
+                  colors: [Color(0xFF161F30), Color(0xFF080C12), Color(0xFF080C12)],
                 ),
               ),
             ),
@@ -123,7 +122,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(Icons.shield_rounded, size: 58, color: accent),
+                        // اللوجو الرسمي الدائري بدل الأيقونة الصفراء
+                        Center(
+                          child: Container(
+                            width: 90,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: accent, width: 2),
+                              image: const DecorationImage(
+                                image: AssetImage('assets/icon/iron_logo.png'),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 18),
                         const Text(
                           'IRON',
@@ -157,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             hintStyle: const TextStyle(color: Colors.white38),
                             prefixIcon: const Icon(Icons.person_outline, color: accent),
                             filled: true,
-                            fillColor: Colors.black54,
+                            fillColor: const Color(0xFF111823),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -188,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             hintStyle: const TextStyle(color: Colors.white38),
                             prefixIcon: const Icon(Icons.lock_outline, color: accent),
                             filled: true,
-                            fillColor: Colors.black54,
+                            fillColor: const Color(0xFF111823),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -220,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: _busy ? null : _submit,
                             style: FilledButton.styleFrom(
                               backgroundColor: accent,
-                              foregroundColor: Colors.black,
+                              foregroundColor: Colors.white,
                               disabledBackgroundColor: accent.withOpacity(0.55),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
@@ -228,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ? const SizedBox(
                                     width: 22,
                                     height: 22,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                   )
                                 : const Text(
                                     'CONNECT',
