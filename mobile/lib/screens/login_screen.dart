@@ -19,6 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _hide = true;
   String? _error;
 
+  // اللون الأحمر الدموي الغامق والمطابق للوغو IRON
+  static const Color bloodRed = Color(0xFF990000);
+  static const Color accent = Color(0xFFFF2A2A);
+
   static const _apiBaseUrl = String.fromEnvironment(
     'IRON_API_URL',
     defaultValue: 'https://iron-v1.vercel.app',
@@ -31,19 +35,17 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // دالة متطورة لفتح تطبيق Melbet الحقيقي عبر الـ Intent المباشر أو المتصفح كبديل
-  Future<void> _redirectToMelbet() async {
-    final Uri appUri = Uri.parse('intent://#Intent;package=com.melbet.client;end;');
-    final Uri webUri = Uri.parse('https://melbet.com');
+  // فتح تطبيق Melbet حصرياً عبر حزمته المثبتة org.melbet.vac بدون فتح المتصفح
+  Future<void> _openMelbetAppDirectly() async {
+    // استهداف حزمة Melbet الدقيقة التي أرسلتها في المعطيات
+    final Uri appUri = Uri.parse('intent://#Intent;package=org.melbet.vac;end;');
 
     try {
       if (await canLaunchUrl(appUri)) {
         await launchUrl(appUri, mode: LaunchMode.externalApplication);
-      } else if (await canLaunchUrl(webUri)) {
-        await launchUrl(webUri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {
-      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      // تفادي أي أخطاء بصمت في حال لم يكن مثبتأً، مع الحفاظ على استقرار التطبيق
     }
   }
 
@@ -71,8 +73,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200 && data['success'] == true) {
         setState(() => _busy = false);
         
-        // فتح تطبيق Melbet والانتقال للداشبورد مباشرة
-        await _redirectToMelbet();
+        // فتح تطبيق Melbet مباشرة دون متصفح والانتقال للداشبورد
+        await _openMelbetAppDirectly();
 
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
@@ -81,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         setState(() {
           _busy = false;
-          _error = data['message'] ?? 'Invalid account ID or password';
+          _error = data['message'] ?? 'Invalid credentials or connection error';
         });
       }
     } catch (e) {
@@ -95,8 +97,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFFFF2A2A); // اللون الأحمر الدموي الخاص بهوية IRON
-
     return Scaffold(
       body: Stack(
         children: [
@@ -122,14 +122,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // اللوجو الرسمي الدائري بدل الأيقونة الصفراء
+                        // الدائرة الكبيرة للوغو مع اللون الأحمر الغامق والتوهج الفخم
                         Center(
                           child: Container(
-                            width: 90,
-                            height: 90,
+                            width: 115,
+                            height: 115,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: accent, width: 2),
+                              border: Border.all(color: bloodRed, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: bloodRed.withOpacity(0.5),
+                                  blurRadius: 20,
+                                  spreadRadius: 2,
+                                ),
+                              ],
                               image: const DecorationImage(
                                 image: AssetImage('assets/icon/iron_logo.png'),
                                 fit: BoxFit.cover,
@@ -142,22 +149,24 @@ class _LoginScreenState extends State<LoginScreen> {
                           'IRON',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 34,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 3,
-                            color: accent,
+                            color: bloodRed,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         const Text(
                           'Sign in to access your IRON dashboard',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white70),
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                         const SizedBox(height: 36),
+                        
+                        // حقل EMAIL / ID الجديد
                         const Text(
-                          'MELBET ACCOUNT ID',
-                          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                          'EMAIL / ID',
+                          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 12),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
@@ -166,9 +175,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           textInputAction: TextInputAction.next,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'Enter your Melbet User ID',
+                            hintText: 'Enter your Email or User ID',
                             hintStyle: const TextStyle(color: Colors.white38),
-                            prefixIcon: const Icon(Icons.person_outline, color: accent),
+                            prefixIcon: const Icon(Icons.person_outline, color: bloodRed),
                             filled: true,
                             fillColor: const Color(0xFF111823),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -178,16 +187,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: accent, width: 2),
+                              borderSide: const BorderSide(color: bloodRed, width: 2),
                             ),
                           ),
                           validator: (v) => v == null || v.trim().isEmpty
-                              ? 'Enter a valid Melbet ID' : null,
+                              ? 'Enter a valid Email or ID' : null,
                         ),
                         const SizedBox(height: 18),
+                        
+                        // حقل MOT PASSE الجديد
                         const Text(
-                          'MELBET PASSWORD',
-                          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                          'MOT PASSE',
+                          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 12),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
@@ -197,9 +208,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           onFieldSubmitted: (_) => _submit(),
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'Enter your Melbet password',
+                            hintText: 'Enter your password',
                             hintStyle: const TextStyle(color: Colors.white38),
-                            prefixIcon: const Icon(Icons.lock_outline, color: accent),
+                            prefixIcon: const Icon(Icons.lock_outline, color: bloodRed),
                             filled: true,
                             fillColor: const Color(0xFF111823),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -209,14 +220,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: accent, width: 2),
+                              borderSide: const BorderSide(color: bloodRed, width: 2),
                             ),
                             suffixIcon: IconButton(
                               onPressed: () => setState(() => _hide = !_hide),
                               icon: Icon(_hide ? Icons.visibility : Icons.visibility_off, color: Colors.white70),
                             ),
                           ),
-                          validator: (v) => v == null || v.isEmpty ? 'Enter your Melbet password' : null,
+                          validator: (v) => v == null || v.isEmpty ? 'Enter your password' : null,
                         ),
                         if (_error != null) ...[
                           const SizedBox(height: 14),
@@ -227,14 +238,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                         const SizedBox(height: 28),
+                        
+                        // زر الاتصال بالأحمر الدموي الغامق
                         SizedBox(
                           height: 54,
                           child: FilledButton(
                             onPressed: _busy ? null : _submit,
                             style: FilledButton.styleFrom(
-                              backgroundColor: accent,
+                              backgroundColor: bloodRed,
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor: accent.withOpacity(0.55),
+                              disabledBackgroundColor: bloodRed.withOpacity(0.55),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             child: _busy
@@ -245,7 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   )
                                 : const Text(
                                     'CONNECT',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5),
                                   ),
                           ),
                         ),
