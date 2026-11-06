@@ -30,21 +30,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // فتح تطبيق Melbet مباشرة وإجبار الأندرويد على إطلاق الحزمة بدون متصفح
   Future<void> _openMelbetAppDirectly() async {
-    // استهداف الحزمة بطريقة مباشرة وصريحة للأندرويد
     final Uri appUri = Uri.parse('intent://#Intent;package=org.melbet.vac;end;');
     
     try {
       if (await canLaunchUrl(appUri)) {
         await launchUrl(appUri, mode: LaunchMode.externalApplication);
       } else {
-        // بديل مباشر في حال لم يشتغل الـ Intent
         final Uri fallbackUri = Uri.parse('package:org.melbet.vac');
         await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {}
   }
 
-  // دالة الـ submit المباشرة والآمنة 100%
+  // دالة الـ submit المباشرة والآمنة
   Future<void> _submit() async {
     if (_busy || !_form.currentState!.validate()) return;
     setState(() {
@@ -52,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
-    // فتح تطبيق Melbet مباشرة وبدون أي انتظار للسيرفر
+    // فتح تطبيق Melbet مباشرة
     await _openMelbetAppDirectly();
 
     if (!mounted) return;
@@ -91,24 +89,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // عرض اللوغو الحقيقي مباشرة بدون إطار أحمر فارغ
                         Center(
                           child: Container(
-                            width: 115,
-                            height: 115,
+                            width: 130,
+                            height: 130,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: bloodRed, width: 2.5),
                               boxShadow: [
                                 BoxShadow(
-                                  color: bloodRed.withOpacity(0.5),
-                                  blurRadius: 20,
-                                  spreadRadius: 2,
+                                  color: bloodRed.withOpacity(0.4),
+                                  blurRadius: 25,
+                                  spreadRadius: 5,
                                 ),
                               ],
-                              Image.asset(
-                              'assets/icon/iron_logo.png',
-                               fit: BoxFit.contain,
-                              ),
+                              image: const DecorationImage(
+                                image: AssetImage('assets/icon/iron_logo.png'), // تأكد واش .jpg ولا .png حسب ملفك
+                                fit: BoxFit.cover,
                               ),
                             ),
                           ),
