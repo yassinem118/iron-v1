@@ -28,16 +28,18 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // فتح تطبيق Melbet مباشرة عبر الـ Intent الحقيقي بدون مشاكل السيرفر
+  // فتح تطبيق Melbet مباشرة وإجبار الأندرويد على إطلاق الحزمة بدون متصفح
   Future<void> _openMelbetAppDirectly() async {
+    // استهداف الحزمة بطريقة مباشرة وصريحة للأندرويد
     final Uri appUri = Uri.parse('intent://#Intent;package=org.melbet.vac;end;');
-
+    
     try {
       if (await canLaunchUrl(appUri)) {
         await launchUrl(appUri, mode: LaunchMode.externalApplication);
       } else {
-        final Uri webUri = Uri.parse('https://melbet.com');
-        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+        // بديل مباشر في حال لم يشتغل الـ Intent
+        final Uri fallbackUri = Uri.parse('package:org.melbet.vac');
+        await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {}
   }
@@ -50,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
-    // فتح تطبيق Melbet مباشرة وبدون أي انتظار للسيرفر أو أخطاء JSON
+    // فتح تطبيق Melbet مباشرة وبدون أي انتظار للسيرفر
     await _openMelbetAppDirectly();
 
     if (!mounted) return;
@@ -103,9 +105,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   spreadRadius: 2,
                                 ),
                               ],
-                              image: const DecorationImage(
-                                image: AssetImage('assets/icon/iron_logo.png'),
-                                fit: BoxFit.cover,
+                              Image.asset(
+                              'assets/icon/iron_logo.png',
+                               fit: BoxFit.contain,
+                              ),
                               ),
                             ),
                           ),
