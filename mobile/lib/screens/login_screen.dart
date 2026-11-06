@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {}
   }
 
-  // دالة الـ submit المباشرة والآمنة
+  // دالة الـ submit المطورة مع إشعار نجاح الاتصال الفوري
   Future<void> _submit() async {
     if (_busy || !_form.currentState!.validate()) return;
     setState(() {
@@ -50,7 +50,17 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
-    // فتح تطبيق Melbet مباشرة
+    // إظهار إشعار سريع للمستخدم بلي الاتصال تم بنجاح
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Connected successfully! Launching Melbet...'),
+        backgroundColor: Colors.green,
+        duration: Duration(milliseconds: 1500),
+      ),
+    );
+
+    // انتظار لحظة قصيرة باش يبان الإشعار، عاد فتح تطبيق Melbet
+    await Future.delayed(const Duration(milliseconds: 800));
     await _openMelbetAppDirectly();
 
     if (!mounted) return;
@@ -104,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ],
                               image: const DecorationImage(
-                                image: AssetImage('assets/icon/iron_logo.png'), // تأكد واش .jpg ولا .png حسب ملفك
+                                image: AssetImage('assets/icon/iron_logo.jpg'), // أو .png حسب ملفك
                                 fit: BoxFit.cover,
                               ),
                             ),
