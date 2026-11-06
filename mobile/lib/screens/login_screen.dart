@@ -19,10 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _hide = true;
   String? _error;
 
-  // اللون الأحمر الدموي الغامق والمطابق للوغو IRON
   static const Color bloodRed = Color(0xFF990000);
   static const Color accent = Color(0xFFFF2A2A);
 
+  // الرابط الأساسي للباك إند
   static const _apiBaseUrl = String.fromEnvironment(
     'IRON_API_URL',
     defaultValue: 'https://iron-v1.vercel.app',
@@ -35,18 +35,19 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // فتح تطبيق Melbet حصرياً عبر حزمته المثبتة org.melbet.vac بدون فتح المتصفح
+  // دالة فتح تطبيق Melbet مباشرة عبر الـ Intent الحقيقي
   Future<void> _openMelbetAppDirectly() async {
-    // استهداف حزمة Melbet الدقيقة التي أرسلتها في المعطيات
     final Uri appUri = Uri.parse('intent://#Intent;package=org.melbet.vac;end;');
 
     try {
       if (await canLaunchUrl(appUri)) {
         await launchUrl(appUri, mode: LaunchMode.externalApplication);
+      } else {
+        // خطة بديلة لمتصفح الويب في حال لم يتوفر الـ Intent
+        final Uri webUri = Uri.parse('https://melbet.com');
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
       }
-    } catch (_) {
-      // تفادي أي أخطاء بصمت في حال لم يكن مثبتأً، مع الحفاظ على استقرار التطبيق
-    }
+    } catch (_) {}
   }
 
   Future<void> _submit() async {
@@ -73,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200 && data['success'] == true) {
         setState(() => _busy = false);
         
-        // فتح تطبيق Melbet مباشرة دون متصفح والانتقال للداشبورد
+        // فتح تطبيق Melbet مباشرة والانتقال للداشبورد
         await _openMelbetAppDirectly();
 
         if (!mounted) return;
@@ -83,14 +84,14 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         setState(() {
           _busy = false;
-          _error = data['message'] ?? 'Invalid credentials or connection error';
+          _error = data['message'] ?? 'Invalid account ID or password';
         });
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Connection error. Please check your internet connection.';
+        _error = 'Connection failed: ${e.toString()}';
       });
     }
   }
@@ -122,7 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // الدائرة الكبيرة للوغو مع اللون الأحمر الغامق والتوهج الفخم
                         Center(
                           child: Container(
                             width: 115,
@@ -162,8 +162,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                         const SizedBox(height: 36),
-                        
-                        // حقل EMAIL / ID الجديد
                         const Text(
                           'EMAIL / ID',
                           style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 12),
@@ -194,8 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? 'Enter a valid Email or ID' : null,
                         ),
                         const SizedBox(height: 18),
-                        
-                        // حقل MOT PASSE الجديد
                         const Text(
                           'MOT PASSE',
                           style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 12),
@@ -238,8 +234,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                         const SizedBox(height: 28),
-                        
-                        // زر الاتصال بالأحمر الدموي الغامق
                         SizedBox(
                           height: 54,
                           child: FilledButton(

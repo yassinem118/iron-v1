@@ -1,3 +1,4 @@
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -6,8 +7,8 @@
         android:label="iron_v1"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        android:usesCleartextTraffic="true"> 
-        
+        android:usesCleartextTraffic="true">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -17,43 +18,49 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            
+
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme"
+                />
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
         </activity>
-        
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
     </application>
-    
+
     <queries>
-        <!-- السماح بالتطبيق برؤية وفتح تطبيق Melbet مباشرة عبر الـ Scheme الخاص به -->
+
+        <package android:name="org.melbet.vac"/>
+
         <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="melbet" />
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="melbet"/>
         </intent>
 
-        <!-- السماح للتطبيق برؤية المتصفحات الخارجية لفتح روابط الـ HTTP/HTTPS -->
         <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="https" />
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
+
         <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="http" />
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
         </intent>
-        
-        <!-- الحفاظ على الإعداد القديم إذا كان التطبيق محتاجه -->
+
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+
     </queries>
+
 </manifest>
